@@ -9,7 +9,7 @@
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
+      <canvas id="unity-canvas" width=1000 height=600 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
         <div id="unity-logo"></div>
         <div id="unity-progress-bar-empty">
@@ -59,9 +59,9 @@
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/demo.loader.js";
       var config = {
-        dataUrl: buildUrl + "/demo.data",
-        frameworkUrl: buildUrl + "/demo.framework.js",
-        codeUrl: buildUrl + "/demo.wasm",
+        dataUrl: buildUrl + "/9df8c21c554f70f225c7d7047e6afa78.data",
+        frameworkUrl: buildUrl + "/bd2ccec8d67f6962bf7280c3435eecac.js",
+        codeUrl: buildUrl + "/2de4b827a1c5df52b819fb3ca1f6474d.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "spineDemo",
@@ -94,7 +94,7 @@
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
 
-        canvas.style.width = "960px";
+        canvas.style.width = "1000px";
         canvas.style.height = "600px";
       }
 
