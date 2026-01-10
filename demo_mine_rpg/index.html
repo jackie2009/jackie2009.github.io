@@ -2,56 +2,101 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>伊苏 x 黄金矿工 (全技能汉字版)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>伊苏 x 黄金矿工 (钩爪强化版)</title>
     <style>
-        body { background-color: #222; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: 'serif'; overflow: hidden; user-select: none; }
-        #gameCanvas { background-color: #000; border: 4px solid #fff; box-shadow: 0 0 20px rgba(0,0,0,0.8); image-rendering: pixelated; }
-        .hint { margin-top: 10px; font-family: sans-serif; color: #888; }
+        body { background-color: #222; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: Arial, sans-serif; }
+        #gameCanvas { background-color: #000; border: 4px solid #fff; image-rendering: pixelated; }
     </style>
 </head>
 <body>
 
     <canvas id="gameCanvas" width="600" height="800"></canvas>
-    <div class="hint">空格键发射钩爪 | 抓取球体进行连击</div>
 
 <script>
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 800;
 const SPLIT_Y = 300; 
-const BASE_TIME = 12.0;
 
-const COLORS = {
-    bgTop: "#3a2c3c", bgBottom: "#1a1a2e", hero: "#3498db", enemy: "#e74c3c", hook: "#f1c40f"
+// 像素画家对象
+const Painter = {
+    drawHero(ctx, x, y, frame) {
+        ctx.save();
+        ctx.translate(x, y);
+        const offset = Math.sin(frame * 0.1) * 3;
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0, 5, 20, 8, 0, 0, Math.PI * 2); ctx.fill(); // 阴影
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(-18, -35 + offset, 12, 25); // 披风
+        ctx.fillStyle = "#2980b9"; ctx.fillRect(-12, -40 + offset, 24, 35); // 身体
+        ctx.fillStyle = "#ffe0bd"; ctx.fillRect(-10, -55 + offset, 20, 20); // 头部
+        ctx.fillStyle = "#34495e"; ctx.fillRect(-10, -58 + offset, 20, 8);  // 头发
+        ctx.fillStyle = "#bdc3c7"; ctx.fillRect(8, -45 + offset, 6, 30);   // 剑
+        ctx.restore();
+    },
+    drawBoar(ctx, x, y, frame) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(-1, 1);
+        const bounce = Math.abs(Math.sin(frame * 0.15)) * 4;
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(0, 5, 25, 10, 0, 0, Math.PI * 2); ctx.fill(); // 阴影
+        ctx.fillStyle = "#4a2c2a"; ctx.fillRect(-25, -35 + bounce, 50, 30); // 身体
+        ctx.fillStyle = "#5d3a37"; ctx.fillRect(15, -30 + bounce, 20, 20);  // 头部
+        ctx.fillStyle = "#ecf0f1"; ctx.fillRect(30, -15 + bounce, 8, 5);    // 獠牙
+        ctx.fillStyle = "#ff0000"; ctx.fillRect(25, -25 + bounce, 4, 4);    // 眼睛
+        ctx.restore();
+    },
+    drawBG(ctx) {
+        ctx.fillStyle = "#2c1e2f";
+        ctx.beginPath();
+        ctx.moveTo(0, SPLIT_Y); ctx.lineTo(150, 150); ctx.lineTo(300, SPLIT_Y);
+        ctx.moveTo(250, SPLIT_Y); ctx.lineTo(450, 180); ctx.lineTo(600, SPLIT_Y);
+        ctx.fill();
+    },
+    // 🎨 新增：专门绘制钩头箭头的方法
+    drawHookHead(ctx, x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillStyle = "#f1c40f"; // 金色钩头
+        ctx.beginPath();
+        ctx.moveTo(15, 0);      // 尖端
+        ctx.lineTo(-8, -12);    // 上侧倒钩
+        ctx.lineTo(0, 0);       // 回缩点
+        ctx.lineTo(-8, 12);     // 下侧倒钩
+        ctx.closePath();
+        ctx.fill();
+        // 给箭头加个白边，更清晰
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+    }
 };
 
-// 物品定义：增加了标识文字 'label'
 const ITEM_TYPES = [
-    { id: 'atk_n', type: 'attack', label: "攻", name: "普通攻击", color: "#ecf0f1", radius: 16, damage: 15, minD: 80,  maxD: 250, weight: 30 },
-    { id: 'atk_h', type: 'attack', label: "重", name: "绿色重击", color: "#2ecc71", radius: 18, damage: 35, minD: 180, maxD: 350, weight: 20 },
-    { id: 'atk_t', type: 'attack', label: "雷", name: "雷电斩!!", color: "#f1c40f", radius: 20, damage: 85, minD: 350, maxD: 480, weight: 8,  effect: 'thunder' },
-    { id: 'atk_f', type: 'attack', label: "火", name: "烈火斩!!", color: "#e67e22", radius: 22, damage: 65, minD: 280, maxD: 420, weight: 10, effect: 'fire' },
-    { id: 'itm_h', type: 'heal',   label: "药", name: "回复药水", color: "#ff4757", radius: 16, value: 40,  minD: 100, maxD: 300, weight: 12 },
-    { id: 'itm_t', type: 'time',   label: "时", name: "时间沙漏", color: "#1e90ff", radius: 18, value: 5,   minD: 150, maxD: 400, weight: 12 }
+    { label: "攻", name: "普通攻击", color: "#ecf0f1", radius: 16, damage: 15, weight: 1.0, minD: 80, maxD: 250 },
+    { label: "重", name: "重击", color: "#2ecc71", radius: 18, damage: 35, weight: 1.2, minD: 180, maxD: 350 },
+    { label: "雷", name: "雷电斩!!", color: "#f1c40f", radius: 20, damage: 85, weight: 1.5, minD: 350, maxD: 480, effect: 'thunder' },
+    { label: "火", name: "烈火斩!!", color: "#e67e22", radius: 22, damage: 65, weight: 1.3, minD: 280, maxD: 420, effect: 'fire' },
+    { label: "药", name: "回复药水", color: "#ff4757", radius: 16, value: 40, weight: 1.0, minD: 100, maxD: 300 },
+    { label: "时", name: "时间沙漏", color: "#1e90ff", radius: 18, value: 5, weight: 1.0, minD: 150, maxD: 400 }
 ];
 
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        this.state = 'PLAYER_TURN'; 
-        this.turnTimer = BASE_TIME;
-        this.maxTime = 20.0;
-        this.combo = 0; // 回合内连击数
-        this.hero = { hp: 100, maxHp: 150 };
-        this.enemy = { hp: 600, maxHp: 600 }; 
-        this.hook = { x: 300, y: SPLIT_Y + 20, angle: Math.PI/2, angleSpeed: 0.04, angleDir: 1, length: 30, status: 'SWING', speed: 14, caughtItem: null };
+        this.frame = 0;
+        this.shake = 0;
+        this.state = 'PLAYER_TURN';
+        this.turnTimer = 12.0;
+        this.hero = { x: 120, y: 240, hp: 100, maxHp: 150 };
+        this.enemy = { x: 480, y: 240, hp: 600, maxHp: 600 };
+        this.hook = { x: 300, y: SPLIT_Y + 10, angle: Math.PI/2, angleSpeed: 0.045, angleDir: 1, length: 25, status: 'SWING', speed: 15, caughtItem: null };
         this.items = [];
         this.floatingTexts = [];
         this.effects = [];
+        
         this.initItems();
         this.bindInput();
-        this.lastTime = Date.now();
         this.loop();
     }
 
@@ -59,211 +104,164 @@ class Game {
         this.items = [];
         for (let i = 0; i < 12; i++) {
             const template = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-            const angleRad = (20 + Math.random() * 140) * (Math.PI / 180);
+            const angleRad = (25 + Math.random() * 130) * (Math.PI / 180);
             const dist = template.minD + Math.random() * (template.maxD - template.minD);
             const x = this.hook.x + Math.cos(angleRad) * dist;
             const y = this.hook.y + Math.sin(angleRad) * dist;
-            if (x < 40 || x > CANVAS_WIDTH - 40 || y > CANVAS_HEIGHT - 40) { i--; continue; }
+            if (x < 40 || x > 560 || y > 760) { i--; continue; }
             this.items.push({ ...template, x, y, active: true });
         }
     }
 
     bindInput() {
-        const action = () => {
+        const fire = () => {
             if (this.state === 'PLAYER_TURN' && this.hook.status === 'SWING' && this.turnTimer > 0) this.hook.status = 'SHOOT';
-            else if (this.state === 'GAME_OVER') this.resetGame();
+            if (this.state === 'GAME_OVER') location.reload();
         };
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space') action(); });
-        this.canvas.addEventListener('mousedown', action);
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') fire(); });
+        this.canvas.addEventListener('mousedown', fire);
     }
 
-    resetGame() { this.hero.hp = 100; this.enemy.hp = 600; this.startPlayerTurn(); }
-
-    startPlayerTurn() {
-        this.state = 'PLAYER_TURN'; this.turnTimer = BASE_TIME; this.hook.status = 'SWING'; this.combo = 0;
-        this.initItems();
-        this.addFloatingText("你的回合!", CANVAS_WIDTH/2, 120, "#fff", 24);
-    }
-
-    update(dt) {
-        this.updateVisuals(dt);
-        if (this.state === 'GAME_OVER') return;
-        if (this.state === 'PLAYER_TURN') {
-            if (this.turnTimer > 0) this.turnTimer -= dt;
-            this.updateHook();
-            if (this.turnTimer <= 0 && this.hook.status === 'SWING') this.switchTurn('ENEMY');
-        } else if (this.state === 'ENEMY_TURN') {
-            if (!this.enemyTimer) this.enemyTimer = 1.0;
-            this.enemyTimer -= dt;
-            if (this.enemyTimer <= 0) this.enemyAttack();
-        }
-    }
-
-    updateHook() {
-        const h = this.hook;
-        if (h.status === 'SWING') {
-            h.angle += h.angleSpeed * h.angleDir;
-            if (h.angle > Math.PI - 0.1 || h.angle < 0.1) h.angleDir *= -1;
-        } else if (h.status === 'SHOOT') {
-            h.length += h.speed;
-            const tipX = h.x + Math.cos(h.angle) * h.length;
-            const tipY = h.y + Math.sin(h.angle) * h.length;
-            if (tipX < 0 || tipX > CANVAS_WIDTH || tipY > CANVAS_HEIGHT) h.status = 'PULL';
-            for (let item of this.items) {
-                if (!item.active) continue;
-                const dist = Math.sqrt((tipX-item.x)**2 + (tipY-item.y)**2);
-                if (dist < item.radius + 8) { h.caughtItem = item; item.active = false; h.status = 'PULL'; break; }
-            }
-        } else if (h.status === 'PULL') {
-            h.length -= h.speed;
-            if (h.length <= 30) {
-                h.length = 30; h.status = 'SWING';
-                if (h.caughtItem) { this.applyItemEffect(h.caughtItem); h.caughtItem = null; }
-                if (this.items.filter(i=>i.active).length < 3) this.initItems();
-            }
-        }
-    }
-
-    applyItemEffect(item) {
-        this.combo++;
-        this.addFloatingText(`${item.name}`, CANVAS_WIDTH/2, 160, item.color, 28);
-        if (this.combo > 1) this.addFloatingText(`${this.combo}连击!`, CANVAS_WIDTH/2, 200, "#f1c40f", 20);
-
-        if (item.type === 'attack') {
+    applyEffect(item) {
+        this.shake = 10;
+        this.addFloatingText(item.name, 300, 100, item.color, 32);
+        if (item.damage) {
             this.enemy.hp -= item.damage;
-            this.addEffect(item.effect || 'hit', 450, 180);
-            this.addFloatingText("-" + item.damage, 450, 130, "#fff", 22);
-            if (this.enemy.hp <= 0) this.state = 'GAME_OVER';
-        } else if (item.type === 'heal') {
+            this.effects.push({ x: this.enemy.x, y: this.enemy.y, type: item.effect || 'hit', life: 1.0 });
+            this.addFloatingText("-" + item.damage, this.enemy.x, this.enemy.y - 50, "#fff", 24);
+        } else if (item.label === "药") {
             this.hero.hp = Math.min(this.hero.hp + item.value, 150);
-            this.addEffect('heal', 100, 180);
-            this.addFloatingText("HP +" + item.value, 100, 130, "#2ecc71", 22);
-        } else if (item.type === 'time') {
-            this.turnTimer = Math.min(this.turnTimer + item.value, this.maxTime);
-            this.addFloatingText("TIME +" + item.value, CANVAS_WIDTH/2, SPLIT_Y + 60, "#3498db", 22);
+            this.effects.push({ x: this.hero.x, y: this.hero.y, type: 'heal', life: 1.0 });
+            this.addFloatingText("+" + item.value, this.hero.x, this.hero.y - 50, "#2ecc71", 24);
+        } else if (item.label === "时") {
+            this.turnTimer = Math.min(this.turnTimer + item.value, 20);
+        }
+        if (this.enemy.hp <= 0) this.state = 'GAME_OVER';
+    }
+
+    update() {
+        this.frame++;
+        if (this.shake > 0) this.shake *= 0.9;
+        this.floatingTexts.forEach(t => { t.y -= 1; t.life -= 0.02; });
+        this.floatingTexts = this.floatingTexts.filter(t => t.life > 0);
+        this.effects.forEach(e => e.life -= 0.05);
+        this.effects = this.effects.filter(e => e.life > 0);
+
+        if (this.state === 'PLAYER_TURN') {
+            this.turnTimer -= 0.016;
+            const h = this.hook;
+            if (h.status === 'SWING') {
+                h.angle += h.angleSpeed * h.angleDir;
+                if (h.angle > Math.PI - 0.2 || h.angle < 0.2) h.angleDir *= -1;
+            } else if (h.status === 'SHOOT') {
+                h.length += h.speed;
+                const tx = h.x + Math.cos(h.angle) * h.length, ty = h.y + Math.sin(h.angle) * h.length;
+                if (tx < 0 || tx > 600 || ty > 800) h.status = 'PULL';
+                for (let it of this.items) {
+                    if (it.active && Math.hypot(tx-it.x, ty-it.y) < it.radius + 10) {
+                        h.caughtItem = it; it.active = false; h.status = 'PULL'; break;
+                    }
+                }
+            } else if (h.status === 'PULL') {
+                // 回收速度受重量稍微影响，增加手感
+                const currentSpeed = h.speed / (h.caughtItem ? h.caughtItem.weight : 1);
+                h.length -= currentSpeed;
+                if (h.length <= 25) {
+                    h.length = 25; h.status = 'SWING';
+                    if (h.caughtItem) { this.applyEffect(h.caughtItem); h.caughtItem = null; }
+                    if (this.items.filter(i=>i.active).length < 3) this.initItems();
+                }
+            }
+            if (this.turnTimer <= 0 && h.status === 'SWING') { this.state = 'ENEMY_TURN'; this.enemyWait = 60; }
+        } else if (this.state === 'ENEMY_TURN') {
+            if (this.enemyWait-- <= 0) {
+                this.hero.hp -= 25; this.shake = 15;
+                this.effects.push({ x: this.hero.x, y: this.hero.y, type: 'hit', life: 1.0 });
+                this.state = 'PLAYER_TURN'; this.turnTimer = 12.0;
+                if (this.hero.hp <= 0) this.state = 'GAME_OVER';
+            }
         }
     }
-
-    enemyAttack() {
-        this.enemyTimer = null;
-        const dmg = 25;
-        this.hero.hp -= dmg;
-        this.addEffect('hit', 100, 180);
-        this.addFloatingText("敌人反击!", CANVAS_WIDTH/2, 160, "red", 28);
-        this.addFloatingText("-" + dmg, 100, 130, "red", 22);
-        if (this.hero.hp <= 0) this.state = 'GAME_OVER'; else this.startPlayerTurn();
-    }
-
-    switchTurn(who) { if (who === 'ENEMY') this.state = 'ENEMY_TURN'; }
-
-    updateVisuals(dt) {
-        this.floatingTexts = this.floatingTexts.filter(t => t.life > 0);
-        this.floatingTexts.forEach(t => { t.y -= 0.6; t.life -= dt; });
-        this.effects = this.effects.filter(e => e.life > 0);
-        this.effects.forEach(e => e.life -= dt);
-    }
-
-    addFloatingText(text, x, y, color, size=20) { this.floatingTexts.push({ text, x, y, color, size, life: 1.2 }); }
-
-    addEffect(type, x, y) { this.effects.push({ type, x, y, life: 0.5 }); }
 
     draw() {
         const ctx = this.ctx;
-        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        ctx.fillStyle = COLORS.bgTop; ctx.fillRect(0, 0, CANVAS_WIDTH, SPLIT_Y);
+        ctx.save();
+        if (this.shake > 1) ctx.translate(Math.random()*this.shake, Math.random()*this.shake);
         
-        // 绘制英雄与敌人
-        this.drawSprite(100, 220, COLORS.hero, "勇者");
-        this.drawSprite(450, 220, COLORS.enemy, "野猪");
-        this.drawUI();
+        // 背景
+        ctx.fillStyle = "#3a2c3c"; ctx.fillRect(0,0,600,300);
+        Painter.drawBG(ctx);
+        Painter.drawHero(ctx, this.hero.x, this.hero.y, this.frame);
+        Painter.drawBoar(ctx, this.enemy.x, this.enemy.y, this.frame);
 
-        // 下半部分
-        ctx.fillStyle = COLORS.bgBottom; ctx.fillRect(0, SPLIT_Y, CANVAS_WIDTH, CANVAS_HEIGHT - SPLIT_Y);
+        // 下半场矿区
+        ctx.fillStyle = "#1a1a2e"; ctx.fillRect(0,300,600,500);
+        this.items.forEach(it => {
+            if (!it.active) return;
+            ctx.fillStyle = it.color; ctx.beginPath(); ctx.arc(it.x, it.y, it.radius, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = it.color === "#ecf0f1" ? "#000" : "#fff";
+            ctx.font = "bold 16px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(it.label, it.x, it.y);
+        });
+
+        // 🏹 核心修改：绘制线 + 旋转钩头
+        const endX = this.hook.x + Math.cos(this.hook.angle) * this.hook.length;
+        const endY = this.hook.y + Math.sin(this.hook.angle) * this.hook.length;
         
-        // 绘制带文字的圆球
-        for (let item of this.items) {
-            if (!item.active) continue;
-            // 绘制球体
-            ctx.fillStyle = item.color; ctx.beginPath(); ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2; ctx.stroke();
-            // 绘制文字标识
-            ctx.fillStyle = (item.color === "#ecf0f1") ? "#000" : "#fff";
-            ctx.font = "bold 16px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(item.label, item.x, item.y);
+        // 画线
+        ctx.strokeStyle = "#fff"; 
+        ctx.lineWidth = 2; 
+        ctx.beginPath(); 
+        ctx.moveTo(this.hook.x, this.hook.y); 
+        ctx.lineTo(endX, endY); 
+        ctx.stroke();
+
+        // 画旋转钩头
+        Painter.drawHookHead(ctx, endX, endY, this.hook.angle);
+
+        // 如果抓到了东西，显示在钩头处
+        if (this.hook.caughtItem) {
+            ctx.fillStyle = this.hook.caughtItem.color; 
+            ctx.beginPath(); ctx.arc(endX, endY, 12, 0, Math.PI*2); ctx.fill();
         }
 
-        this.drawHook();
-        this.drawEffects();
-        
-        // 浮动文字
-        ctx.textAlign = "center";
-        for (let t of this.floatingTexts) {
-            ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px Arial`;
+        // UI & 文字
+        ctx.fillStyle = "#f00"; ctx.fillRect(430, 20, 150 * (this.enemy.hp/600), 10);
+        ctx.fillStyle = "#0f0"; ctx.fillRect(20, 20, 150 * (this.hero.hp/150), 10);
+        if (this.state === 'PLAYER_TURN') {
+            ctx.fillStyle = "#3498db"; ctx.fillRect(200, 280, 200 * (this.turnTimer/20), 8);
+        }
+
+        this.floatingTexts.forEach(t => {
+            ctx.fillStyle = t.color; ctx.font = `bold ${t.size}px Arial`; ctx.textAlign="center";
             ctx.fillText(t.text, t.x, t.y);
-        }
+        });
+        
+        this.effects.forEach(e => {
+            ctx.fillStyle = e.type === 'fire' ? "orange" : e.type === 'thunder' ? "yellow" : "white";
+            ctx.globalAlpha = e.life; ctx.beginPath(); ctx.arc(e.x, e.y, 50*(1-e.life), 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1;
+        });
 
         if (this.state === 'GAME_OVER') {
-            ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            ctx.fillStyle = "#fff"; ctx.font = "40px Arial"; ctx.fillText(this.hero.hp > 0 ? "胜利!" : "战败", CANVAS_WIDTH/2, CANVAS_HEIGHT/2);
-            ctx.font = "20px Arial"; ctx.fillText("点击重赛", CANVAS_WIDTH/2, CANVAS_HEIGHT/2 + 60);
+            ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,600,800);
+            ctx.fillStyle = "#fff"; ctx.font = "40px Arial"; ctx.textAlign="center";
+            ctx.fillText(this.hero.hp > 0 ? "VICTORY" : "GAME OVER", 300, 400);
         }
-    }
 
-    drawSprite(x, y, color, label) {
-        const ctx = this.ctx;
-        ctx.fillStyle = color; ctx.fillRect(x - 25, y - 50, 50, 50);
-        ctx.fillStyle = "#fff"; ctx.font = "14px Arial"; ctx.fillText(label, x, y + 20);
-    }
-
-    drawUI() {
-        const ctx = this.ctx;
-        // 简易血条
-        this.drawBar(20, 30, this.hero.hp, 150, "#2ecc71", "HP");
-        this.drawBar(CANVAS_WIDTH - 170, 30, this.enemy.hp, 600, "#ff4757", "BOSS");
-        
-        if (this.state === 'PLAYER_TURN') {
-            const ratio = this.turnTimer / this.maxTime;
-            ctx.fillStyle = ratio < 0.2 ? "#ff4757" : "#3498db";
-            ctx.fillRect(200, SPLIT_Y - 20, 200 * ratio, 10);
-            ctx.strokeStyle = "#fff"; ctx.strokeRect(200, SPLIT_Y - 20, 200, 10);
-        }
-    }
-
-    drawBar(x, y, val, max, color, label) {
-        const ctx = this.ctx; ctx.fillStyle = "#333"; ctx.fillRect(x, y, 150, 12);
-        ctx.fillStyle = color; ctx.fillRect(x, y, 150 * (Math.max(0, val)/max), 12);
-    }
-
-    drawHook() {
-        const ctx = this.ctx; const h = this.hook;
-        const endX = h.x + Math.cos(h.angle) * h.length;
-        const endY = h.y + Math.sin(h.angle) * h.length;
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(endX, endY); ctx.stroke();
-        // 钩子头
-        ctx.save(); ctx.translate(endX, endY); ctx.rotate(h.angle); ctx.fillStyle = COLORS.hook;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10, -12); ctx.lineTo(15, 0); ctx.lineTo(-10, 12); ctx.fill();
-        if (h.caughtItem) {
-            ctx.fillStyle = h.caughtItem.color; ctx.beginPath(); ctx.arc(15, 0, h.caughtItem.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "#000"; ctx.font = "12px Arial"; ctx.fillText(h.caughtItem.label, 15, 0);
-        }
         ctx.restore();
     }
 
-    drawEffects() {
-        const ctx = this.ctx;
-        for (let e of this.effects) {
-            if (e.type === 'fire') ctx.fillStyle = `rgba(230, 126, 34, ${e.life})`;
-            else if (e.type === 'thunder') ctx.fillStyle = `rgba(241, 196, 15, ${e.life})`;
-            else ctx.fillStyle = `rgba(255, 255, 255, ${e.life})`;
-            ctx.beginPath(); ctx.arc(e.x, e.y, 60 * (1-e.life), 0, Math.PI*2); ctx.fill();
-        }
+    addFloatingText(text, x, y, color, size) {
+        this.floatingTexts.push({ text, x, y, color, size, life: 1.0 });
     }
 
     loop() {
-        const now = Date.now(); const dt = (now - this.lastTime)/1000; this.lastTime = now;
-        this.update(dt); this.draw(); requestAnimationFrame(() => this.loop());
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
     }
 }
+
 window.onload = () => new Game();
 </script>
 </body>
