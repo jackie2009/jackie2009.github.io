@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-cinzel: "Cinzel", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-dark-bg: #0a0a0c;
+  --color-console-bg: #0d0d11;
+  
+  --shadow-weapon-cyan: 0 0 15px rgba(34, 211, 238, 0.4);
+  --shadow-weapon-yellow: 0 0 15px rgba(250, 204, 21, 0.4);
+  --shadow-weapon-fuchsia: 0 0 15px rgba(192, 38, 211, 0.4);
+}
+
+@layer utilities {
+  .hero-gradient {
+    background: radial-gradient(circle at center, #1e293b 0%, #0a0a0c 100%);
+  }
+  
+  .energy-bar-segment {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 100%);
+    backdrop-filter: blur(4px);
+  }
+
+  .weapon-glow-cyan {
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+  }
+  
+  .weapon-glow-yellow {
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+  }
+  
+  .weapon-glow-fuchsia {
+    box-shadow: 0 0 15px rgba(192, 38, 211, 0.4);
+  }
+}
