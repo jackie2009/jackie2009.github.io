@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>骑士狂想曲 - 武器切割版</title>
+    
+    <!-- 引入核心库 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@700;900&display=swap');
+        
+        :root {
+            --font-cinzel: 'Cinzel', serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            background-color: #0a0a0c;
+            color: #e0e0e0;
+            font-family: var(--font-mono);
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .font-cinzel { font-family: var(--font-cinzel); }
+        
+        .hero-gradient {
+            background: radial-gradient(circle at center, #1e293b 0%, #0a0a0c 100%);
+        }
+        
+        .energy-bar-segment {
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 100%);
+            backdrop-filter: blur(4px);
+        }
+
+        .weapon-glow-cyan { box-shadow: 0 0 15px rgba(34, 211, 238, 0.4); }
+        .weapon-glow-yellow { box-shadow: 0 0 15px rgba(250, 204, 21, 0.4); }
+        .weapon-glow-fuchsia { box-shadow: 0 0 15px rgba(192, 38, 211, 0.4); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+        const { motion, AnimatePresence } = FramerMotion;
+
+        // 模拟 Lucide 图标 (CDN 环境下图标通过 lucide.createIcons 处理或直接用 Emoji/SVG)
+        const Icon = ({ name, className }) => {
+            // 这里简单用名称映射
+            const icons = {
+                Sword: "🗡️",
+                Spear: "🔱",
+                Bow: "🏹",
+                Refresh: "🔄"
+            };
+            return <span className={className}>{icons[name] || "⚔️"}</span>;
+        };
+
+        const WEAPONS = [
+            { id: 'sword', type: 'Sword', label: '短剑', color: 'bg-cyan-400', glow: 'weapon-glow-cyan', border: 'border-cyan-400' },
+            { id: 'spear', type: 'Spear', label: '长矛', color: 'bg-yellow-400', glow: 'weapon-glow-yellow', border: 'border-yellow-400' },
+            { id: 'bow', type: 'Bow', label: '弓箭', color: 'bg-fuchsia-400', glow: 'weapon-glow-fuchsia', border: 'border-fuchsia-400' },
+        ];
+
+        const INITIAL_HP = 500;
+
+        function App() {
+            const [gameState, setGameState] = useState('IDLE');
+            const [playerHP, setPlayerHP] = useState(INITIAL_HP);
+            const [enemyHP, setEnemyHP] = useState(INITIAL_HP);
+            const [bars, setBars] = useState([]);
+            const [cutCount, setCutCount] = useState(0);
+            const [scanPos, setScanPos] = useState(0);
+            const [scanDirection, setScanDirection] = useState(1);
+            const [damageResults, setDamageResults] = useState([]);
+            const [feedback, setFeedback] = useState(null);
+            const [winner, setWinner] = useState(null);
+            const [shake, setShake] = useState(false);
+
+            const scanRef = useRef(0);
+            const requestRef = useRef(null);
+
+            const resetBars = useCallback(() => {
+                const newBars = WEAPONS.map((w) => ({
+                    id: w.id,
+                    type: w.type,
+                    x: Math.random() * 50,
+                    width: 50
+                }));
+                setBars(newBars);
+                setCutCount(0);
+            }, []);
+
+            const triggerShake = useCallback(() => {
+                setShake(true);
+                setTimeout(() => setShake(false), 300);
+            }, []);
+
+            const animateScan = useCallback(() => {
+                setScanPos((prev) => {
+                    let next = prev + 1.2 * scanDirection;
+                    if (next >= 100) { setScanDirection(-1); next = 100; }
+                    else if (next <= 0) { setScanDirection(1); next = 0; }
+                    scanRef.current = next;
+                    return next;
+                });
+                requestRef.current = requestAnimationFrame(animateScan);
+            }, [scanDirection]);
+
+            useEffect(() => {
+                if (gameState === 'PLAYER_CUTTING') {
+                    requestRef.current = requestAnimationFrame(animateScan);
+                } else {
+                    if (requestRef.current) cancelAnimationFrame(requestRef.current);
+                }
+                return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
+            }, [gameState, animateScan]);
+
+            const startCombat = () => {
+                setPlayerHP(INITIAL_HP);
+                setEnemyHP(INITIAL_HP);
+                setWinner(null);
+                setGameState('PLAYER_CUTTING');
+                resetBars();
+            };
+
+            const handleCut = useCallback(() => {
+                if (gameState !== 'PLAYER_CUTTING' || cutCount >= 3) return;
+                const currentScan = scanRef.current;
+                
+                setBars((prevBars) => prevBars.map((bar) => {
+                    if (currentScan >= bar.x && currentScan <= bar.x + bar.width) {
+                        const leftLen = currentScan - bar.x;
+                        const rightLen = (bar.x + bar.width) - currentScan;
+                        return leftLen < rightLen ? { ...bar, width: leftLen } : { ...bar, x: currentScan, width: rightLen };
+                    }
+                    return bar;
+                }));
+
+                setCutCount(prev => prev + 1);
+                setFeedback("SYNC");
+                setTimeout(() => setFeedback(null), 500);
+
+                if (cutCount === 2) {
+                    setTimeout(() => setGameState('PLAYER_ATTACKING'), 1000);
+                }
+            }, [gameState, cutCount]);
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.code === 'Space') { e.preventDefault(); handleCut(); }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [handleCut]);
+
+            useEffect(() => {
+                if (gameState === 'PLAYER_ATTACKING') {
+                    const results = bars.map(bar => ({
+                        weapon: bar.type,
+                        multiplier: Math.max(1, Math.round((50 / (bar.width || 0.1)) * 10) / 10)
+                    }));
+                    setDamageResults(results);
+
+                    let currentEnemyHP = enemyHP;
+                    results.forEach((res, i) => {
+                        setTimeout(() => {
+                            const dmg = Math.floor(res.multiplier * 5);
+                            currentEnemyHP = Math.max(0, currentEnemyHP - dmg);
+                            setEnemyHP(currentEnemyHP);
+                            triggerShake();
+                            if (i === results.length - 1) {
+                                setTimeout(() => {
+                                    if (currentEnemyHP <= 0) { setGameState('GAME_OVER'); setWinner('Knight'); }
+                                    else { setGameState('ENEMY_ATTACKING'); }
+                                }, 800);
+                            }
+                        }, i * 600);
+                    });
+                }
+            }, [gameState]);
+
+            useEffect(() => {
+                if (gameState === 'ENEMY_ATTACKING') {
+                    setTimeout(() => {
+                        const dmg = (Math.floor(Math.random() * 15) + 10) * 5;
+                        const nextHP = Math.max(0, playerHP - dmg);
+                        setPlayerHP(nextHP);
+                        triggerShake();
+                        setTimeout(() => {
+                            if (nextHP <= 0) { setGameState('GAME_OVER'); setWinner('Shadow Guard'); }
+                            else { resetBars(); setGameState('PLAYER_CUTTING'); }
+                        }, 1000);
+                    }, 1200);
+                }
+            }, [gameState]);
+
+            return (
+                <div className="h-screen w-full bg-[#0a0a0c] text-neutral-100 flex flex-col font-mono selection:bg-cyan-500 overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent z-50"></div>
+
+                    <section className="h-2/3 w-full relative flex items-center justify-around hero-gradient border-b border-white/10 overflow-hidden">
+                        <div className="absolute top-8 left-0 right-0 text-center z-20 pointer-events-none">
+                            <h1 className="font-cinzel text-5xl tracking-[0.2em] text-white/90 uppercase">Knight's Gambit</h1>
+                            <p className="text-[10px] tracking-[0.8em] text-white/40 mt-3 uppercase">{gameState === 'IDLE' ? 'Protocol Idle' : `Duel Cycle // ${gameState}`}</p>
+                        </div>
+
+                        {/* Player */}
+                        <div className="relative z-10">
+                            <motion.div animate={gameState === 'ENEMY_ATTACKING' ? { x: [-10, 10, -10, 10, 0] } : {}} className="w-64 h-80 bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-center backdrop-blur-md">
+                                <div className="w-32 h-32 rounded-full border-2 border-cyan-500/30 flex items-center justify-center mb-8 bg-cyan-500/5">
+                                    <span className="text-6xl">⚔️</span>
+                                </div>
+                                <div className="text-center w-full px-8">
+                                    <p className="font-cinzel text-2xl text-cyan-400">SIR ALARIC</p>
+                                    <div className="w-full h-1.5 bg-neutral-800 rounded-full mt-4 overflow-hidden">
+                                        <motion.div className="h-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]" animate={{ width: `${(playerHP/INITIAL_HP)*100}%` }}></motion.div>
+                                    </div>
+                                    <p className="text-[10px] mt-2 opacity-50">HP: {playerHP} / {INITIAL_HP}</p>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        <div className="text-6xl font-cinzel opacity-10">VS</div>
+
+                        {/* Enemy */}
+                        <div className="relative z-10">
+                            <motion.div animate={gameState === 'PLAYER_ATTACKING' ? { scale: [1, 0.95, 1.05, 1] } : {}} className="w-64 h-80 bg-white/5 border border-white/10 rounded-xl flex flex-col items-center justify-center backdrop-blur-md">
+                                <div className="w-32 h-32 rounded-full border-2 border-red-500/30 flex items-center justify-center mb-8 bg-red-500/5">
+                                    <span className="text-6xl">👹</span>
+                                </div>
+                                <div className="text-center w-full px-8">
+                                    <p className="font-cinzel text-2xl text-red-500">V-FIEND</p>
+                                    <div className="w-full h-1.5 bg-neutral-800 rounded-full mt-4 overflow-hidden flex justify-end">
+                                        <motion.div className="h-full bg-red-600 shadow-[0_0_10px_#dc2626]" animate={{ width: `${(enemyHP/INITIAL_HP)*100}%` }}></motion.div>
+                                    </div>
+                                    <p className="text-[10px] mt-2 opacity-50">HP: {enemyHP} / {INITIAL_HP}</p>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        <div className="absolute bottom-12 left-0 right-0 flex justify-center z-20">
+                            <AnimatePresence mode="wait">
+                                {gameState === 'IDLE' && (
+                                    <motion.button onClick={startCombat} className="px-12 py-4 bg-white text-neutral-900 font-cinzel font-black uppercase tracking-[0.3em] hover:bg-cyan-500 hover:text-white transition-all">Engage Duel</motion.button>
+                                )}
+                                {gameState === 'PLAYER_ATTACKING' && (
+                                    <motion.div className="flex gap-12" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                        {damageResults.map((res, i) => (
+                                            <div key={i} className="flex flex-col items-center">
+                                                <span className="text-[10px] uppercase opacity-40">{res.weapon}</span>
+                                                <span className="text-4xl font-cinzel">x{res.multiplier}</span>
+                                            </div>
+                                        ))}
+                                    </motion.div>
+                                )}
+                                {gameState === 'GAME_OVER' && (
+                                    <div className="text-center">
+                                        <h2 className="text-4xl font-cinzel text-cyan-400 mb-4 tracking-[0.2em]">{winner?.toUpperCase()} VICTORIOUS</h2>
+                                        <button onClick={startCombat} className="text-xs tracking-widest text-white/50 hover:text-white uppercase">RE-INITIALIZE PROTOCOL</button>
+                                    </div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </section>
+
+                    <section className="h-1/3 w-full bg-[#0d0d11] p-10 flex flex-col gap-6 relative">
+                        <div className="flex justify-between items-end px-4 mb-2 z-10">
+                            <div className="flex gap-12 text-white">
+                                <div><p className="text-[10px] opacity-40 uppercase">Action Sync</p><p className="text-2xl font-bold">SLICE {cutCount} / 3</p></div>
+                                <div><p className="text-[10px] opacity-40 uppercase">Input Override</p><p className="text-2xl font-bold">[SPACE] TO CUT</p></div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] opacity-40 uppercase">Projection Magnitude</p>
+                                <p className="text-5xl font-cinzel text-white">x{(bars.reduce((acc, b) => acc + (Math.max(1, Math.round((50 / (b.width || 0.1)) * 10) / 10)), 0) / 3).toFixed(1)}</p>
+                            </div>
+                        </div>
+
+                        <div className="relative flex-grow bg-black/40 rounded-xl border border-white/5 overflow-hidden flex flex-col justify-around p-6 backdrop-blur-sm">
+                            {gameState === 'PLAYER_CUTTING' && <motion.div className="absolute top-0 bottom-0 w-[2px] bg-gradient-to-b from-transparent via-white to-transparent z-30" style={{ left: `${scanPos}%` }}></motion.div>}
+                            
+                            {bars.map((bar) => {
+                                const weapon = WEAPONS.find(w => w.type === bar.type);
+                                return (
+                                    <div key={bar.id} className={`flex items-center gap-8 h-12 bg-white/[0.02] pr-8 relative border-l-4 ${weapon.border} ${weapon.glow}`}>
+                                        <div className="w-20 text-center text-3xl">{bar.type === 'Sword' ? '🗡️' : bar.type === 'Spear' ? '🔱' : '🏹'}</div>
+                                        <div className="flex-1 h-8 bg-black/60 rounded relative overflow-hidden">
+                                            <motion.div className="absolute h-full energy-bar-segment border-x border-white/20 z-10" layout style={{ left: `${bar.x}%`, width: `${bar.width}%` }}>
+                                                <div className={`absolute right-0 top-0 h-full w-[2px] ${weapon.color}`}></div>
+                                            </motion.div>
+                                        </div>
+                                        <div className="w-32 text-right"><span className={`text-2xl font-bold ${weapon.color.replace('bg-', 'text-')}`}>x{(Math.max(1, Math.round((50 / (bar.width || 0.1)) * 10) / 10)).toFixed(1)}</span></div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
