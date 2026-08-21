@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>荒野插片 · 饥荒式 3D 世界</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1612; }
+    body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif; color: #e8dcc4; }
+    #view { display: block; width: 100%; height: 100%; }
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 4;
+      background: radial-gradient(ellipse at 50% 42%, transparent 62%, rgba(8,6,4,0.42) 100%);
+    }
+    #hud-wrap {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; pointer-events: none;
+      background: linear-gradient(180deg, transparent, rgba(8,6,4,0.5) 30%);
+    }
+    #hud-wrap img { display: block; width: 100%; height: auto; }
+    #hint {
+      position: fixed; top: 14px; left: 16px; z-index: 9; pointer-events: none;
+      text-shadow: 0 2px 8px #000, 0 0 2px #000;
+    }
+    #hint h1 {
+      font-size: 18px; font-weight: 700; letter-spacing: 0.18em;
+      color: #e6d3a6; margin-bottom: 6px;
+    }
+    #hint p { font-size: 12px; opacity: 0.82; line-height: 1.7; letter-spacing: 0.04em; }
+    #hint kbd {
+      display: inline-block; min-width: 1.4em; padding: 0 5px; margin: 0 1px;
+      border: 1px solid #6a5a40; border-bottom-width: 2px; border-radius: 3px;
+      background: rgba(20,16,12,0.55); font-family: inherit; font-size: 11px; text-align: center;
+    }
+    #load {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+      background: #14110e; letter-spacing: 0.22em; font-size: 13px; color: #cbb58a;
+    }
+    #load.hide { opacity: 0; pointer-events: none; transition: opacity 0.45s ease; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="vignette"></div>
+  <div id="hud-wrap"><img src="assets/hud.png" alt="" /></div>
+  <div id="hint">
+    <h1>荒野插片</h1>
+    <p>
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动
+      &nbsp;<kbd>Shift</kbd> 奔跑
+      &nbsp;<kbd>Q</kbd><kbd>E</kbd> 转视角<br />
+      拖拽鼠标旋转镜头 · 树草角色按参考图重绘
+    </p>
+  </div>
+  <div id="load">从截图装入插片…</div>
+
+  <script src="vendor/three.min.js"></script>
+  <script>
+  (() => {
+    const TAU = Math.PI * 2;
+    const WORLD = 90;
+
+    function mulberry(seed) {
+      let a = seed >>> 0;
+      return () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function loadTex(url) {
+      return new Promise((resolve, reject) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(url, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.magFilter = THREE.LinearFilter;
+          t.minFilter = THREE.LinearFilter;
+          t.needsUpdate = true;
+          resolve(t);
+        }, undefined, reject);
+      });
+    }
+
+    function makeShadowTex() {
+      const c = document.createElement("canvas");
+      c.width = 128; c.height = 128;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(64, 64, 6, 64, 64, 58);
+      grd.addColorStop(0, "rgba(0,0,0,0.55)");
+      grd.addColorStop(0.5, "rgba(0,0,0,0.22)");
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+
+    const canvas = document.getElementById("view");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setClearColor(0x3a362c, 1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x4a4436, 0.018);
+    scene.background = new THREE.Color(0x3a362c);
+
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 160);
+    scene.add(new THREE.HemisphereLight(0xe8dcc0, 0x4a3824, 1.45));
+    const sun = new THREE.DirectionalLight(0xfff0d0, 0.85);
+    sun.position.set(10, 22, 6);
+    scene.add(sun);
+    const lamp = new THREE.PointLight(0xffe2b0, 3.0, 22, 1.2);
+    scene.add(lamp);
+
+    const ents = [];
+    const blockers = [];
+    const keys = new Set();
+    const mouse = { down: false, x: 0 };
+    let yaw = 0.55;
+    const look = new THREE.Vector3(0, 0.6, 0);
+    let time = 0;
+    const rngG = mulberry(20260821);
+
+    const shadowTex = makeShadowTex();
+
+    function addShadow(x, z, sx, sz) {
+      const geo = new THREE.PlaneGeometry(1, 1);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        map: shadowTex, transparent: true, depthWrite: false
+      });
+      const m = new THREE.Mesh(geo, mat);
+      m.scale.set(sx, 1, sz);
+      m.position.set(x, 0.025, z);
+      m.renderOrder = 1;
+      scene.add(m);
+      return m;
+    }
+
+    function addBillboard(tex, x, z, height, opts = {}) {
+      const img = tex.image;
+      const aspect = img.width / Math.max(1, img.height);
+      const w = height * aspect;
+      const map = tex;
+      const mat = new THREE.SpriteMaterial({
+        map,
+        transparent: true,
+        alphaTest: 0.18,
+        depthWrite: true,
+        rotation: 0
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.center.set(opts.cx ?? 0.5, opts.cy ?? 0.02);
+      spr.scale.set(w, height, 1);
+      spr.position.set(x, opts.y ?? 0, z);
+      spr.renderOrder = 2;
+      scene.add(spr);
+      const shadow = opts.shadow === false ? null : addShadow(x, z, opts.sw ?? w * 0.72, opts.sh ?? w * 0.42);
+      const ent = {
+        kind: opts.kind || "prop",
+        sprite: spr,
+        shadow,
+        x, z,
+        w, h: height,
+        face: 1,
+        mapL: tex,
+        mapR: (opts.kind === "player" || opts.kind === "npc") ? makeFlippedTex(tex) : tex,
+        radius: opts.radius ?? 0,
+        phase: Math.random() * TAU,
+        seed: Math.random() * 100,
+        vx: 0, vz: 0,
+        speed: 0,
+        wander: opts.wander || null
+      };
+      ents.push(ent);
+      if (ent.radius > 0) blockers.push(ent);
+      return ent;
+    }
+
+    function makeFlippedTex(tex) {
+      const img = tex.image;
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext("2d");
+      g.translate(c.width, 0);
+      g.scale(-1, 1);
+      g.drawImage(img, 0, 0);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      t.needsUpdate = true;
+      return t;
+    }
+
+    function applyFace(ent) {
+      if (!ent.mapR) return;
+      const next = ent.face < 0 ? ent.mapR : ent.mapL;
+      if (ent.sprite.material.map !== next) {
+        ent.sprite.material.map = next;
+        ent.sprite.material.needsUpdate = true;
+      }
+    }
+
+    function occupied(x, z, min) {
+      if (Math.hypot(x, z) < 10.2) return true;
+      for (const b of blockers) {
+        if (Math.hypot(x - b.x, z - b.z) < min + b.radius) return true;
+      }
+      return false;
+    }
+
+    function collide(ent) {
+      const lim = WORLD * 0.46;
+      ent.x = Math.max(-lim, Math.min(lim, ent.x));
+      ent.z = Math.max(-lim, Math.min(lim, ent.z));
+      for (const b of blockers) {
+        if (b === ent) continue;
+        const dx = ent.x - b.x;
+        const dz = ent.z - b.z;
+        const d = Math.hypot(dx, dz) || 0.0001;
+        const min = ent.radius + b.radius;
+        if (d < min) {
+          const k = (min - d) / d;
+          ent.x += dx * k;
+          ent.z += dz * k;
+        }
+      }
+    }
+
+    function sync(ent) {
+      ent.sprite.position.x = ent.x;
+      ent.sprite.position.z = ent.z;
+      if (ent.shadow) {
+        ent.shadow.position.x = ent.x;
+        ent.shadow.position.z = ent.z;
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys.add(e.code);
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+    });
+    window.addEventListener("keyup", (e) => keys.delete(e.code));
+    canvas.addEventListener("pointerdown", (e) => {
+      mouse.down = true;
+      mouse.x = e.clientX;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointerup", () => { mouse.down = false; });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!mouse.down) return;
+      yaw -= (e.clientX - mouse.x) * 0.0055;
+      mouse.x = e.clientX;
+    });
+    window.addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    function inputAxis() {
+      let x = 0, z = 0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) z -= 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) z += 1;
+      if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
+      if (keys.has("KeyD") || keys.has("ArrowRight")) x += 1;
+      const len = Math.hypot(x, z);
+      if (len > 1) { x /= len; z /= len; }
+      return { x, z, run: keys.has("ShiftLeft") || keys.has("ShiftRight") };
+    }
+
+    function animateEnt(ent, dt) {
+      const spr = ent.sprite;
+      const moving = ent.speed > 0.15;
+
+      if (ent.kind === "tree" || ent.kind === "bush") {
+        const amp = ent.kind === "tree" ? 0.03 : 0.055;
+        const spd = ent.kind === "tree" ? 0.7 : 1.25;
+        spr.material.rotation = Math.sin(time * spd + ent.seed) * amp;
+        return;
+      }
+
+      if (ent.kind === "player" || ent.kind === "npc") {
+        if (moving) {
+          ent.phase += dt * (7.2 + ent.speed * 0.55);
+          const hop = Math.abs(Math.sin(ent.phase));
+          const tilt = Math.sin(ent.phase) * 0.28;
+          const squash = 1 + Math.cos(ent.phase * 2) * 0.07;
+          spr.position.y = hop * 0.18;
+          spr.material.rotation = tilt;
+          spr.scale.set(ent.w * squash, ent.h / Math.max(0.84, squash), 1);
+          applyFace(ent);
+          if (ent.shadow) {
+            const k = 1 - hop * 0.16;
+            ent.shadow.scale.set(ent.w * 0.72 * k, 1, ent.w * 0.42 * k);
+          }
+        } else {
+          const breathe = Math.sin(time * 2.15 + ent.seed) * 0.022;
+          spr.position.y = 0.02 + Math.abs(breathe);
+          spr.material.rotation = Math.sin(time * 1.25 + ent.seed) * 0.05;
+          spr.scale.set(ent.w * (1 + breathe * 0.3), ent.h * (1 - breathe * 0.18), 1);
+          applyFace(ent);
+        }
+      }
+    }
+
+    async function boot() {
+      const names = [
+        "player", "beast_hook", "beast_rake",
+        "tree1", "tree2", "tree3", "tree4", "tree5",
+        "bush1", "bush2", "bush3", "bush4", "bush5",
+        "stump1", "stump2", "stump3", "rock1"
+      ];
+      const tex = {};
+      await Promise.all(names.map(async (n) => {
+        tex[n] = await loadTex("assets/sprites/" + n + ".png");
+      }));
+
+      const groundMat = new THREE.MeshLambertMaterial({ color: 0xc8b48c });
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 2, WORLD * 2), groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      scene.add(ground);
+      try {
+        const gt = await loadTex("assets/ground.png");
+        gt.wrapS = gt.wrapT = THREE.RepeatWrapping;
+        gt.repeat.set(10, 10);
+        gt.anisotropy = 8;
+        groundMat.map = gt;
+        groundMat.color.set(0xffffff);
+        groundMat.needsUpdate = true;
+      } catch (e) { /* keep fallback color */ }
+
+      const trees = [tex.tree1, tex.tree2, tex.tree3, tex.tree4, tex.tree5];
+      const bushes = [tex.bush1, tex.bush2, tex.bush3, tex.bush4, tex.bush5];
+      const stumps = [tex.stump1, tex.stump2, tex.stump3];
+
+      const player = addBillboard(tex.player, 0.6, 0.3, 2.35, {
+        kind: "player", radius: 0.4, sw: 1.05, sh: 0.58, cy: 0.08
+      });
+
+      addBillboard(tex.beast_hook, -4.8, -2.2, 2.05, {
+        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08,
+        wander: { r: 4.2, ox: -4.8, oz: -2.2, tx: -4.8, tz: -2.2 }
+      });
+      addBillboard(tex.beast_rake, 4.4, 3.1, 2.08, {
+        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08,
+        wander: { r: 4.8, ox: 4.4, oz: 3.1, tx: 5.5, tz: 2.2 }
+      });
+      addBillboard(tex.beast_hook, -2.4, -14.8, 2.0, {
+        kind: "npc", radius: 0.45, sw: 1.05, sh: 0.55, cy: 0.08,
+        wander: { r: 3.6, ox: -2.4, oz: -14.8, tx: -1, tz: -13 }
+      });
+
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * TAU + rngG() * 0.1;
+        const r = 10.4 + rngG() * 2.6;
+        const s = 0.92 + rngG() * 0.38;
+        addBillboard(trees[i % trees.length], Math.cos(a) * r, Math.sin(a) * r, 5.4 * s, {
+          kind: "tree", radius: 0.62 * s, sw: 1.7 * s, sh: 0.95 * s
+        });
+      }
+
+      for (let i = 0; i < 26; i++) {
+        const a = rngG() * TAU;
+        const r = 3.3 + rngG() * 6.4;
+        const s = 0.75 + rngG() * 0.4;
+        addBillboard(bushes[i % bushes.length], Math.cos(a) * r, Math.sin(a) * r, 1.05 * s, {
+          kind: "bush", sw: 0.8 * s, sh: 0.45 * s
+        });
+      }
+      for (let i = 0; i < 10; i++) {
+        const a = rngG() * TAU;
+        const r = 3.0 + rngG() * 5.8;
+        addBillboard(tex.rock1, Math.cos(a) * r, Math.sin(a) * r, 0.62, {
+          kind: "rock", radius: 0.22, sw: 0.55, sh: 0.32
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = rngG() * TAU;
+        const r = 4.2 + rngG() * 5.5;
+        addBillboard(stumps[i % stumps.length], Math.cos(a) * r, Math.sin(a) * r, 0.85, {
+          kind: "stump", radius: 0.35, sw: 0.8, sh: 0.45
+        });
+      }
+
+      for (let i = 0; i < 95; i++) {
+        let x, z, n = 0;
+        do {
+          x = (rngG() - 0.5) * 78;
+          z = (rngG() - 0.5) * 78;
+          n++;
+        } while (occupied(x, z, 1.4) && n < 40);
+        if (n >= 40) continue;
+        const s = 0.88 + rngG() * 0.5;
+        addBillboard(trees[i % trees.length], x, z, 5.1 * s, {
+          kind: "tree", radius: 0.58 * s, sw: 1.6 * s, sh: 0.9 * s
+        });
+      }
+
+      for (let i = 0; i < 70; i++) {
+        const x = (rngG() - 0.5) * 76;
+        const z = (rngG() - 0.5) * 76;
+        if (Math.hypot(x, z) < 2.4) continue;
+        const s = 0.72 + rngG() * 0.5;
+        addBillboard(bushes[i % bushes.length], x, z, 1.0 * s, {
+          kind: "bush", sw: 0.75 * s, sh: 0.42 * s
+        });
+      }
+
+      for (let i = 0; i < 18; i++) {
+        let x, z, n = 0;
+        do {
+          x = (rngG() - 0.5) * 70;
+          z = (rngG() - 0.5) * 70;
+          n++;
+        } while (occupied(x, z, 1.1) && n < 25);
+        addBillboard(stumps[i % stumps.length], x, z, 0.82, {
+          kind: "stump", radius: 0.32, sw: 0.75, sh: 0.42
+        });
+      }
+
+      let last = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        time += dt;
+
+        if (keys.has("KeyQ")) yaw += 1.55 * dt;
+        if (keys.has("KeyE")) yaw -= 1.55 * dt;
+
+        const axis = inputAxis();
+        const camSin = Math.sin(yaw);
+        const camCos = Math.cos(yaw);
+        const wx = axis.x * camCos + axis.z * camSin;
+        const wz = -axis.x * camSin + axis.z * camCos;
+        const spd = axis.run ? 8.2 : 5.1;
+        player.vx = wx * spd;
+        player.vz = wz * spd;
+        player.speed = Math.hypot(player.vx, player.vz);
+        player.x += player.vx * dt;
+        player.z += player.vz * dt;
+        // A/D：脸朝左右移动方向；W/S 只前进后退，不改朝向
+        if (Math.abs(axis.x) > 0.05) {
+          player.face = axis.x < 0 ? 1 : -1;
+        }
+        collide(player);
+        sync(player);
+
+        for (const ent of ents) {
+          if (ent.kind !== "npc" || !ent.wander) continue;
+          const w = ent.wander;
+          if (Math.hypot(ent.x - w.tx, ent.z - w.tz) < 0.45) {
+            const a = rngG() * TAU;
+            w.tx = w.ox + Math.cos(a) * w.r * rngG();
+            w.tz = w.oz + Math.sin(a) * w.r * rngG();
+          }
+          const dx = w.tx - ent.x;
+          const dz = w.tz - ent.z;
+          const d = Math.hypot(dx, dz) || 1;
+          const nspd = 1.35;
+          ent.vx = (dx / d) * nspd;
+          ent.vz = (dz / d) * nspd;
+          ent.speed = nspd;
+          ent.x += ent.vx * dt;
+          ent.z += ent.vz * dt;
+          const side = ent.vx * camCos - ent.vz * camSin;
+          if (Math.abs(side) > 0.35) ent.face = side < 0 ? 1 : -1;
+          collide(ent);
+          sync(ent);
+        }
+
+        for (const ent of ents) animateEnt(ent, dt);
+
+        look.x += (player.x - look.x) * Math.min(1, 5.5 * dt);
+        look.z += (player.z - look.z) * Math.min(1, 5.5 * dt);
+        look.y = 0.85;
+        const dist = 8.4;
+        const height = 7.6;
+        camera.position.set(look.x + Math.sin(yaw) * dist, height, look.z + Math.cos(yaw) * dist);
+        camera.lookAt(look);
+        lamp.position.set(player.x, 4.2, player.z);
+
+        const cpx = camera.position.x, cpz = camera.position.z;
+        const pdx = player.x - cpx, pdz = player.z - cpz;
+        const plen = Math.hypot(pdx, pdz) || 1;
+        for (const ent of ents) {
+          if (ent.kind !== "tree") continue;
+          const dx = ent.x - cpx, dz = ent.z - cpz;
+          const d = Math.hypot(dx, dz) || 0.001;
+          const align = (dx * pdx + dz * pdz) / (d * plen);
+          const hide = d < plen - 0.6 && align > 0.8;
+          ent.sprite.material.opacity = hide ? 0.16 : 1;
+          ent.sprite.material.alphaTest = hide ? 0.02 : 0.18;
+          if (ent.shadow) ent.shadow.visible = !hide;
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+      }
+
+      document.getElementById("load").classList.add("hide");
+      requestAnimationFrame((t) => { last = t; frame(t); });
+    }
+
+    boot().catch((err) => {
+      document.getElementById("load").textContent = "插片加载失败";
+      console.error(err);
+    });
+  })();
+  </script>
+</body>
+</html>
