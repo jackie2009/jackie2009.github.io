@@ -49,7 +49,7 @@
       <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动
       &nbsp;<kbd>Shift</kbd> 奔跑
       &nbsp;<kbd>Q</kbd><kbd>E</kbd> 转视角<br />
-      拖拽鼠标旋转镜头 · 树草角色按参考图重绘
+      拖拽鼠标旋转镜头 · 靠近怪物会卡牌对撞
     </p>
   </div>
   <div id="load">从截图装入插片…</div>
@@ -126,8 +126,77 @@
     const look = new THREE.Vector3(0, 0.6, 0);
     let time = 0;
     const rngG = mulberry(20260821);
+    const bursts = [];
+    let outCombat = 2;
 
     const shadowTex = makeShadowTex();
+
+    function makeHpTex() {
+      const c = document.createElement("canvas");
+      c.width = 128;
+      c.height = 20;
+      const g = c.getContext("2d");
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      return { c, g, t };
+    }
+
+    function paintHp(bar, hp, hpMax, ally) {
+      const { c, g, t } = bar;
+      g.clearRect(0, 0, c.width, c.height);
+      const ratio = Math.max(0, Math.min(1, hp / hpMax));
+      g.fillStyle = "rgba(10,8,6,0.82)";
+      g.fillRect(2, 5, 124, 10);
+      g.fillStyle = ally ? "#2db85a" : "#c43a32";
+      if (ratio < 0.3) g.fillStyle = "#d4a024";
+      if (hp <= 0) g.fillStyle = "#5a2a22";
+      g.fillRect(3, 6, 122 * ratio, 8);
+      g.strokeStyle = "#e6d3a6";
+      g.lineWidth = 1.5;
+      g.strokeRect(2, 5, 124, 10);
+      g.fillStyle = "#f4ead0";
+      g.font = "bold 10px sans-serif";
+      g.textAlign = "center";
+      g.fillText(Math.ceil(hp) + "/" + hpMax, 64, 13);
+      t.needsUpdate = true;
+    }
+
+    function makeBurstTex() {
+      const c = document.createElement("canvas");
+      c.width = 128;
+      c.height = 128;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(64, 64, 4, 64, 64, 60);
+      grd.addColorStop(0, "rgba(255,250,230,1)");
+      grd.addColorStop(0.25, "rgba(255,210,90,0.85)");
+      grd.addColorStop(0.55, "rgba(255,140,40,0.25)");
+      grd.addColorStop(1, "rgba(255,180,60,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 128, 128);
+      g.strokeStyle = "rgba(255,245,200,0.9)";
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(64, 64, 28, 0, Math.PI * 2);
+      g.stroke();
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+    const burstTex = makeBurstTex();
+
+    function spawnBurst(x, z) {
+      const mat = new THREE.SpriteMaterial({
+        map: burstTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.position.set(x, 1.15, z);
+      spr.scale.set(0.4, 0.4, 1);
+      spr.renderOrder = 8;
+      scene.add(spr);
+      bursts.push({ spr, t: 0, life: 0.32, x, z });
+    }
 
     function addShadow(x, z, sx, sz) {
       const geo = new THREE.PlaneGeometry(1, 1);
@@ -176,8 +245,31 @@
         seed: Math.random() * 100,
         vx: 0, vz: 0,
         speed: 0,
-        wander: opts.wander || null
+        wander: opts.wander || null,
+        hp: opts.hp ?? 0,
+        hpMax: opts.hp ?? 0,
+        atk: opts.atk ?? 0,
+        clash: null,
+        combatCd: 0,
+        visualOx: 0,
+        visualOz: 0,
+        dead: false,
+        hpBar: null
       };
+      if (opts.hp > 0) {
+        const bar = makeHpTex();
+        paintHp(bar, opts.hp, opts.hp, opts.kind === "player");
+        const bmat = new THREE.SpriteMaterial({
+          map: bar.t, transparent: true, depthWrite: false, alphaTest: 0.05
+        });
+        const bspr = new THREE.Sprite(bmat);
+        bspr.center.set(0.5, 0);
+        bspr.scale.set(1.15, 0.18, 1);
+        bspr.position.set(x, height + 0.12, z);
+        bspr.renderOrder = 6;
+        scene.add(bspr);
+        ent.hpBar = { ...bar, spr: bspr };
+      }
       ents.push(ent);
       if (ent.radius > 0) blockers.push(ent);
       return ent;
@@ -217,12 +309,27 @@
       return false;
     }
 
+    function sync(ent) {
+      ent.sprite.position.x = ent.x + (ent.visualOx || 0);
+      ent.sprite.position.z = ent.z + (ent.visualOz || 0);
+      if (ent.shadow) {
+        ent.shadow.position.x = ent.x;
+        ent.shadow.position.z = ent.z;
+        ent.shadow.visible = !ent.dead;
+      }
+      if (ent.hpBar) {
+        ent.hpBar.spr.position.set(ent.x, ent.h + 0.16, ent.z);
+        ent.hpBar.spr.visible = !ent.dead || ent.hp > 0;
+      }
+    }
+
     function collide(ent) {
       const lim = WORLD * 0.46;
       ent.x = Math.max(-lim, Math.min(lim, ent.x));
       ent.z = Math.max(-lim, Math.min(lim, ent.z));
       for (const b of blockers) {
-        if (b === ent) continue;
+        if (b === ent || b.dead) continue;
+        if ((ent.kind === "player" && b.kind === "npc") || (ent.kind === "npc" && b.kind === "player")) continue;
         const dx = ent.x - b.x;
         const dz = ent.z - b.z;
         const d = Math.hypot(dx, dz) || 0.0001;
@@ -232,15 +339,6 @@
           ent.x += dx * k;
           ent.z += dz * k;
         }
-      }
-    }
-
-    function sync(ent) {
-      ent.sprite.position.x = ent.x;
-      ent.sprite.position.z = ent.z;
-      if (ent.shadow) {
-        ent.shadow.position.x = ent.x;
-        ent.shadow.position.z = ent.z;
       }
     }
 
@@ -277,9 +375,88 @@
       return { x, z, run: keys.has("ShiftLeft") || keys.has("ShiftRight") };
     }
 
+    function dealHit(attacker, defender) {
+      if (!defender || defender.dead) return;
+      defender.hp = Math.max(0, defender.hp - attacker.atk);
+      if (defender.hpBar) paintHp(defender.hpBar, defender.hp, defender.hpMax, defender.kind === "player");
+      const dx = defender.x - attacker.x;
+      const dz = defender.z - attacker.z;
+      const d = Math.hypot(dx, dz) || 1;
+      defender.x += (dx / d) * 0.42;
+      defender.z += (dz / d) * 0.42;
+      if (defender.hp <= 0) killEnt(defender);
+    }
+
+    function killEnt(ent) {
+      ent.dead = true;
+      ent.hp = 0;
+      ent.clash = null;
+      ent.speed = 0;
+      if (ent.kind !== "player") {
+        const i = blockers.indexOf(ent);
+        if (i >= 0) blockers.splice(i, 1);
+      }
+      if (ent.hpBar) paintHp(ent.hpBar, 0, ent.hpMax, ent.kind === "player");
+    }
+
+    function startClash(a, b) {
+      if (a.clash || b.clash || a.dead || b.dead) return;
+      if (a.combatCd > 0 || b.combatCd > 0) return;
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const nx = dx / d, nz = dz / d;
+      a.clash = { t: 0, dur: 0.46, nx, nz, sign: 1, other: b, hit: false };
+      b.clash = { t: 0, dur: 0.46, nx, nz, sign: -1, other: a, hit: false };
+      a.combatCd = 0.78;
+      b.combatCd = 0.78;
+      outCombat = 0;
+    }
+
+    function tickClash(ent, dt) {
+      const c = ent.clash;
+      if (!c) return;
+      c.t += dt;
+      const u = Math.min(1, c.t / c.dur);
+      let travel;
+      if (u < 0.34) travel = (u / 0.34) * 1.05;
+      else if (u < 0.42) travel = 1.05;
+      else {
+        const b = (u - 0.42) / 0.58;
+        travel = 1.05 * (1 - b) * (1 - b) - Math.sin(b * Math.PI) * 0.32;
+      }
+      ent.visualOx = c.nx * travel * c.sign * 0.72;
+      ent.visualOz = c.nz * travel * c.sign * 0.72;
+      ent.sprite.position.x = ent.x + ent.visualOx;
+      ent.sprite.position.z = ent.z + ent.visualOz;
+
+      if (u >= 0.34 && !c.hit) {
+        c.hit = true;
+        if (ent.kind === "player") {
+          dealHit(ent, c.other);
+          dealHit(c.other, ent);
+          spawnBurst(ent.x + c.nx * 0.45, ent.z + c.nz * 0.45);
+        }
+      }
+
+      const flash = u > 0.3 && u < 0.52 ? 1 - Math.abs(u - 0.38) / 0.14 : 0;
+      const col = 1 + flash * 1.6;
+      ent.sprite.material.color.setRGB(col, col, 0.82 + flash * 0.55);
+      const punch = 1 + (flash > 0 ? flash * 0.28 : 0);
+      ent.sprite.scale.set(ent.w * punch, ent.h * punch, 1);
+      ent.sprite.material.rotation = (0.5 - u) * 0.5 * c.sign;
+      ent.sprite.position.y = 0.08 + Math.abs(Math.sin(u * Math.PI)) * 0.28;
+      applyFace(ent);
+
+      if (u >= 1) {
+        ent.clash = null;
+        ent.visualOx = 0;
+        ent.visualOz = 0;
+        ent.sprite.material.color.setRGB(1, 1, 1);
+      }
+    }
+
     function animateEnt(ent, dt) {
       const spr = ent.sprite;
-      const moving = ent.speed > 0.15;
 
       if (ent.kind === "tree" || ent.kind === "bush") {
         const amp = ent.kind === "tree" ? 0.03 : 0.055;
@@ -288,27 +465,46 @@
         return;
       }
 
-      if (ent.kind === "player" || ent.kind === "npc") {
-        if (moving) {
-          ent.phase += dt * (7.2 + ent.speed * 0.55);
-          const hop = Math.abs(Math.sin(ent.phase));
-          const tilt = Math.sin(ent.phase) * 0.28;
-          const squash = 1 + Math.cos(ent.phase * 2) * 0.07;
-          spr.position.y = hop * 0.18;
-          spr.material.rotation = tilt;
-          spr.scale.set(ent.w * squash, ent.h / Math.max(0.84, squash), 1);
-          applyFace(ent);
-          if (ent.shadow) {
-            const k = 1 - hop * 0.16;
-            ent.shadow.scale.set(ent.w * 0.72 * k, 1, ent.w * 0.42 * k);
-          }
-        } else {
-          const breathe = Math.sin(time * 2.15 + ent.seed) * 0.022;
-          spr.position.y = 0.02 + Math.abs(breathe);
-          spr.material.rotation = Math.sin(time * 1.25 + ent.seed) * 0.05;
-          spr.scale.set(ent.w * (1 + breathe * 0.3), ent.h * (1 - breathe * 0.18), 1);
-          applyFace(ent);
+      if (ent.kind !== "player" && ent.kind !== "npc") return;
+
+      if (ent.dead) {
+        ent.visualOx *= 0.9;
+        ent.visualOz *= 0.9;
+        spr.material.rotation = Math.min(0.85, spr.material.rotation + dt * 1.8);
+        spr.material.opacity = Math.max(0.15, spr.material.opacity - dt * 0.7);
+        spr.material.alphaTest = 0.05;
+        spr.scale.set(ent.w, ent.h * Math.max(0.35, 1 - spr.material.rotation), 1);
+        spr.position.y = 0.02;
+        if (ent.hpBar) ent.hpBar.spr.visible = false;
+        applyFace(ent);
+        return;
+      }
+
+      if (ent.clash) {
+        tickClash(ent, dt);
+        return;
+      }
+
+      const moving = ent.speed > 0.15;
+      if (moving) {
+        ent.phase += dt * (7.2 + ent.speed * 0.55);
+        const hop = Math.abs(Math.sin(ent.phase));
+        const tilt = Math.sin(ent.phase) * 0.28;
+        const squash = 1 + Math.cos(ent.phase * 2) * 0.07;
+        spr.position.y = hop * 0.18;
+        spr.material.rotation = tilt;
+        spr.scale.set(ent.w * squash, ent.h / Math.max(0.84, squash), 1);
+        applyFace(ent);
+        if (ent.shadow) {
+          const k = 1 - hop * 0.16;
+          ent.shadow.scale.set(ent.w * 0.72 * k, 1, ent.w * 0.42 * k);
         }
+      } else {
+        const breathe = Math.sin(time * 2.15 + ent.seed) * 0.022;
+        spr.position.y = 0.02 + Math.abs(breathe);
+        spr.material.rotation = Math.sin(time * 1.25 + ent.seed) * 0.05;
+        spr.scale.set(ent.w * (1 + breathe * 0.3), ent.h * (1 - breathe * 0.18), 1);
+        applyFace(ent);
       }
     }
 
@@ -343,19 +539,19 @@
       const stumps = [tex.stump1, tex.stump2, tex.stump3];
 
       const player = addBillboard(tex.player, 0.6, 0.3, 2.35, {
-        kind: "player", radius: 0.4, sw: 1.05, sh: 0.58, cy: 0.08
+        kind: "player", radius: 0.4, sw: 1.05, sh: 0.58, cy: 0.08, hp: 100, atk: 18
       });
 
       addBillboard(tex.beast_hook, -4.8, -2.2, 2.05, {
-        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08,
+        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08, hp: 30, atk: 8,
         wander: { r: 4.2, ox: -4.8, oz: -2.2, tx: -4.8, tz: -2.2 }
       });
       addBillboard(tex.beast_rake, 4.4, 3.1, 2.08, {
-        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08,
+        kind: "npc", radius: 0.45, sw: 1.1, sh: 0.58, cy: 0.08, hp: 25, atk: 7,
         wander: { r: 4.8, ox: 4.4, oz: 3.1, tx: 5.5, tz: 2.2 }
       });
       addBillboard(tex.beast_hook, -2.4, -14.8, 2.0, {
-        kind: "npc", radius: 0.45, sw: 1.05, sh: 0.55, cy: 0.08,
+        kind: "npc", radius: 0.45, sw: 1.05, sh: 0.55, cy: 0.08, hp: 30, atk: 8,
         wander: { r: 3.6, ox: -2.4, oz: -14.8, tx: -1, tz: -13 }
       });
 
@@ -441,40 +637,92 @@
         const camCos = Math.cos(yaw);
         const wx = axis.x * camCos + axis.z * camSin;
         const wz = -axis.x * camSin + axis.z * camCos;
-        const spd = axis.run ? 8.2 : 5.1;
+        const canMove = player.hp > 0 && !player.clash;
+        const spd = canMove ? (axis.run ? 8.2 : 5.1) : 0;
         player.vx = wx * spd;
         player.vz = wz * spd;
         player.speed = Math.hypot(player.vx, player.vz);
         player.x += player.vx * dt;
         player.z += player.vz * dt;
-        // A/D：脸朝左右移动方向；W/S 只前进后退，不改朝向
-        if (Math.abs(axis.x) > 0.05) {
+        if (canMove && Math.abs(axis.x) > 0.05) {
           player.face = axis.x < 0 ? 1 : -1;
         }
         collide(player);
         sync(player);
 
+        if (player.combatCd > 0) player.combatCd -= dt;
+        let nearEnemy = false;
         for (const ent of ents) {
-          if (ent.kind !== "npc" || !ent.wander) continue;
-          const w = ent.wander;
-          if (Math.hypot(ent.x - w.tx, ent.z - w.tz) < 0.45) {
-            const a = rngG() * TAU;
-            w.tx = w.ox + Math.cos(a) * w.r * rngG();
-            w.tz = w.oz + Math.sin(a) * w.r * rngG();
+          if (ent.kind !== "npc") continue;
+          if (ent.combatCd > 0) ent.combatCd -= dt;
+          if (ent.dead) {
+            ent.speed = 0;
+            sync(ent);
+            continue;
           }
-          const dx = w.tx - ent.x;
-          const dz = w.tz - ent.z;
-          const d = Math.hypot(dx, dz) || 1;
-          const nspd = 1.35;
-          ent.vx = (dx / d) * nspd;
-          ent.vz = (dz / d) * nspd;
-          ent.speed = nspd;
-          ent.x += ent.vx * dt;
-          ent.z += ent.vz * dt;
-          const side = ent.vx * camCos - ent.vz * camSin;
-          if (Math.abs(side) > 0.35) ent.face = side < 0 ? 1 : -1;
-          collide(ent);
+          const distP = Math.hypot(ent.x - player.x, ent.z - player.z);
+          if (distP < 2.4 && player.hp > 0) nearEnemy = true;
+          if (distP < 1.55 && player.hp > 0) startClash(player, ent);
+
+          if (ent.clash) {
+            ent.speed = 0;
+          } else if (ent.wander) {
+            const w = ent.wander;
+            if (Math.hypot(ent.x - w.tx, ent.z - w.tz) < 0.45) {
+              const a = rngG() * TAU;
+              w.tx = w.ox + Math.cos(a) * w.r * rngG();
+              w.tz = w.oz + Math.sin(a) * w.r * rngG();
+            }
+            const dx = w.tx - ent.x;
+            const dz = w.tz - ent.z;
+            const d = Math.hypot(dx, dz) || 1;
+            const nspd = distP < 2.8 && player.hp > 0 ? 2.1 : 1.35;
+            ent.vx = (dx / d) * nspd;
+            ent.vz = (dz / d) * nspd;
+            ent.speed = nspd;
+            ent.x += ent.vx * dt;
+            ent.z += ent.vz * dt;
+            const side = ent.vx * camCos - ent.vz * camSin;
+            if (Math.abs(side) > 0.35) ent.face = side < 0 ? 1 : -1;
+            collide(ent);
+          }
           sync(ent);
+        }
+
+        if (nearEnemy || player.clash) outCombat = 0;
+        else outCombat += dt;
+        if (outCombat > 1.6) {
+          if (player.hp < player.hpMax) {
+            player.hp = Math.min(player.hpMax, player.hp + (player.hp <= 0 ? 4 : 6) * dt);
+            if (player.hpBar) paintHp(player.hpBar, player.hp, player.hpMax, true);
+          }
+          if (player.dead && player.hp >= 12) {
+            player.dead = false;
+            player.sprite.material.opacity = 1;
+            player.sprite.material.alphaTest = 0.18;
+            player.sprite.material.color.setRGB(1, 1, 1);
+          }
+          for (const ent of ents) {
+            if (ent.kind !== "npc" || ent.dead) continue;
+            if (ent.hp < ent.hpMax) {
+              ent.hp = Math.min(ent.hpMax, ent.hp + 3 * dt);
+              if (ent.hpBar) paintHp(ent.hpBar, ent.hp, ent.hpMax, false);
+            }
+          }
+        }
+
+        for (let i = bursts.length - 1; i >= 0; i--) {
+          const b = bursts[i];
+          b.t += dt;
+          const u = b.t / b.life;
+          const s = 0.35 + u * 2.4;
+          b.spr.scale.set(s, s, 1);
+          b.spr.material.opacity = 1 - u;
+          b.spr.material.rotation = u * 1.2;
+          if (u >= 1) {
+            scene.remove(b.spr);
+            bursts.splice(i, 1);
+          }
         }
 
         for (const ent of ents) animateEnt(ent, dt);
@@ -482,8 +730,8 @@
         look.x += (player.x - look.x) * Math.min(1, 5.5 * dt);
         look.z += (player.z - look.z) * Math.min(1, 5.5 * dt);
         look.y = 0.85;
-        const dist = 8.4;
-        const height = 7.6;
+        const dist = 10.4;
+        const height = 9.3;
         camera.position.set(look.x + Math.sin(yaw) * dist, height, look.z + Math.cos(yaw) * dist);
         camera.lookAt(look);
         lamp.position.set(player.x, 4.2, player.z);
