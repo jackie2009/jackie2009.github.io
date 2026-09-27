@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>荒野插片 · 饥荒式 3D 世界</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden; background: #1a1612;
+      touch-action: none; overscroll-behavior: none;
+    }
+    body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif; color: #e8dcc4; }
+    #view { display: block; width: 100%; height: 100%; }
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 4;
+      background: radial-gradient(ellipse at 50% 42%, transparent 62%, rgba(8,6,4,0.42) 100%);
+    }
+    #hud-wrap {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; pointer-events: none;
+      background: linear-gradient(180deg, transparent, rgba(8,6,4,0.5) 30%);
+    }
+    #hud-wrap img { display: block; width: 100%; height: auto; }
+    #hint {
+      position: fixed; top: 14px; left: 16px; z-index: 9; pointer-events: none;
+      text-shadow: 0 2px 8px #000, 0 0 2px #000;
+    }
+    #hint h1 {
+      font-size: 18px; font-weight: 700; letter-spacing: 0.18em;
+      color: #e6d3a6; margin-bottom: 6px;
+    }
+    #hint p { font-size: 12px; opacity: 0.82; line-height: 1.7; letter-spacing: 0.04em; }
+    #hint kbd {
+      display: inline-block; min-width: 1.4em; padding: 0 5px; margin: 0 1px;
+      border: 1px solid #6a5a40; border-bottom-width: 2px; border-radius: 3px;
+      background: rgba(20,16,12,0.55); font-family: inherit; font-size: 11px; text-align: center;
+    }
+    #load {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+      background: #14110e; letter-spacing: 0.22em; font-size: 13px; color: #cbb58a;
+    }
+    #load.hide { opacity: 0; pointer-events: none; transition: opacity 0.45s ease; }
+    #touch-ui {
+      display: block; position: fixed; inset: 0; z-index: 16; pointer-events: none;
+    }
+    #stick {
+      pointer-events: auto;
+      position: absolute;
+      left: max(18px, env(safe-area-inset-left));
+      bottom: max(118px, calc(18vh + env(safe-area-inset-bottom)));
+      width: 132px; height: 132px; border-radius: 50%;
+      background: rgba(18, 14, 10, 0.42);
+      border: 2px solid rgba(198, 168, 104, 0.55);
+      box-shadow: inset 0 0 18px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.35);
+      touch-action: none;
+    }
+    #stick-knob {
+      position: absolute; left: 50%; top: 50%;
+      width: 54px; height: 54px; margin: -27px 0 0 -27px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #d8c48a, #8a6e3c 62%, #4a381c);
+      border: 2px solid rgba(240, 220, 160, 0.7);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      will-change: transform;
+    }
+    #btn-run {
+      pointer-events: auto;
+      appearance: none; -webkit-appearance: none;
+      position: absolute;
+      right: max(22px, env(safe-area-inset-right));
+      bottom: max(128px, calc(20vh + env(safe-area-inset-bottom)));
+      width: 76px; height: 76px; border-radius: 50%;
+      border: 2px solid rgba(198, 168, 104, 0.7);
+      background: radial-gradient(circle at 35% 30%, rgba(90,70,40,0.85), rgba(20,14,10,0.82));
+      color: #f0e0b4; font: 700 18px/1 "Microsoft YaHei", sans-serif;
+      letter-spacing: 0.12em;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      touch-action: none;
+      -webkit-user-select: none; user-select: none;
+    }
+    #btn-run.hold {
+      background: radial-gradient(circle at 35% 30%, rgba(180,120,40,0.95), rgba(60,30,10,0.9));
+      border-color: #e6c878;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="vignette"></div>
+  <div id="hud-wrap"><img src="assets/hud.png" alt="" /></div>
+  <div id="hint">
+    <h1>荒野插片</h1>
+    <p>
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动
+      &nbsp;<kbd>Shift</kbd> 奔跑
+      &nbsp;<kbd>Q</kbd><kbd>E</kbd> 转视角<br />
+      手机：左摇杆移动 · 右下「跑」 · 右侧滑动转镜头<br />
+      拖拽鼠标旋转镜头 · 靠近怪物会卡牌对撞
+    </p>
+  </div>
+  <div id="touch-ui">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <button type="button" id="btn-run">跑</button>
+  </div>
+  <div id="load">从截图装入插片…</div>
+
+  <script src="vendor/three.min.js"></script>
+  <script>
+  (() => {
+    const TAU = Math.PI * 2;
+    const WORLD = 116;
+    // 横版序列图有朝向，左右移动时翻转
+    const ENABLE_SPRITE_FLIP = true;
+
+    function mulberry(seed) {
+      let a = seed >>> 0;
+      return () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function loadTex(url) {
+      return new Promise((resolve, reject) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(url, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.magFilter = THREE.LinearFilter;
+          t.minFilter = THREE.LinearFilter;
+          t.needsUpdate = true;
+          resolve(t);
+        }, undefined, reject);
+      });
+    }
+
+    function makeShadowTex() {
+      const c = document.createElement("canvas");
+      c.width = 128; c.height = 128;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(64, 64, 6, 64, 64, 58);
+      grd.addColorStop(0, "rgba(0,0,0,0.55)");
+      grd.addColorStop(0.5, "rgba(0,0,0,0.22)");
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 128, 128);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+
+    const canvas = document.getElementById("view");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setClearColor(0x3a362c, 1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x4a4436, 0.018);
+    scene.background = new THREE.Color(0x3a362c);
+
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 220);
+    scene.add(new THREE.HemisphereLight(0xe8dcc0, 0x4a3824, 1.45));
+    const sun = new THREE.DirectionalLight(0xfff0d0, 0.85);
+    sun.position.set(10, 22, 6);
+    scene.add(sun);
+    const lamp = new THREE.PointLight(0xffe2b0, 3.0, 22, 1.2);
+    scene.add(lamp);
+
+    const ents = [];
+    const blockers = [];
+    const keys = new Set();
+    const mouse = { down: false, x: 0 };
+    let yaw = 0.55;
+    const look = new THREE.Vector3(0, 0.6, 0);
+    let time = 0;
+    const rngG = mulberry(20260821);
+    const bursts = [];
+    let outCombat = 2;
+
+    const shadowTex = makeShadowTex();
+
+    function makeHpTex() {
+      const c = document.createElement("canvas");
+      c.width = 128;
+      c.height = 20;
+      const g = c.getContext("2d");
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      return { c, g, t };
+    }
+
+    function paintHp(bar, hp, hpMax, ally) {
+      const { c, g, t } = bar;
+      g.clearRect(0, 0, c.width, c.height);
+      const ratio = Math.max(0, Math.min(1, hp / hpMax));
+      g.fillStyle = "rgba(10,8,6,0.82)";
+      g.fillRect(2, 5, 124, 10);
+      g.fillStyle = ally ? "#2db85a" : "#c43a32";
+      if (ratio < 0.3) g.fillStyle = "#d4a024";
+      if (hp <= 0) g.fillStyle = "#5a2a22";
+      g.fillRect(3, 6, 122 * ratio, 8);
+      g.strokeStyle = "#e6d3a6";
+      g.lineWidth = 1.5;
+      g.strokeRect(2, 5, 124, 10);
+      g.fillStyle = "#f4ead0";
+      g.font = "bold 10px sans-serif";
+      g.textAlign = "center";
+      g.fillText(Math.ceil(hp) + "/" + hpMax, 64, 13);
+      t.needsUpdate = true;
+    }
+
+    function makeBurstTex() {
+      const c = document.createElement("canvas");
+      c.width = 128;
+      c.height = 128;
+      const g = c.getContext("2d");
+      const grd = g.createRadialGradient(64, 64, 4, 64, 64, 60);
+      grd.addColorStop(0, "rgba(255,250,230,1)");
+      grd.addColorStop(0.25, "rgba(255,210,90,0.85)");
+      grd.addColorStop(0.55, "rgba(255,140,40,0.25)");
+      grd.addColorStop(1, "rgba(255,180,60,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 128, 128);
+      g.strokeStyle = "rgba(255,245,200,0.9)";
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(64, 64, 28, 0, Math.PI * 2);
+      g.stroke();
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    }
+    const burstTex = makeBurstTex();
+
+    function spawnBurst(x, z) {
+      const mat = new THREE.SpriteMaterial({
+        map: burstTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.position.set(x, 1.15, z);
+      spr.scale.set(0.4, 0.4, 1);
+      spr.renderOrder = 8;
+      scene.add(spr);
+      bursts.push({ spr, t: 0, life: 0.32, x, z });
+    }
+
+    function addShadow(x, z, sx, sz) {
+      const geo = new THREE.PlaneGeometry(1, 1);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        map: shadowTex, transparent: true, depthWrite: false
+      });
+      const m = new THREE.Mesh(geo, mat);
+      m.scale.set(sx, 1, sz);
+      m.position.set(x, 0.025, z);
+      m.renderOrder = 1;
+      scene.add(m);
+      return m;
+    }
+
+    function addFenceRun(tex, x0, z0, x1, z1, height, skip) {
+      const img = tex.image;
+      const aspect = img.width / Math.max(1, img.height);
+      const segH = height;
+      const segW = segH * aspect * 0.68;
+      const dx = x1 - x0;
+      const dz = z1 - z0;
+      const len = Math.hypot(dx, dz) || 1;
+      const ux = dx / len;
+      const uz = dz / len;
+      const rotY = Math.atan2(-uz, ux);
+      const alongX = Math.abs(ux) >= Math.abs(uz);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        alphaTest: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: true
+      });
+      const n = Math.max(1, Math.round(len / segW));
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const x = x0 + dx * t;
+        const z = z0 + dz * t;
+        if (skip && skip(x, z)) continue;
+        const geo = new THREE.PlaneGeometry(segH * aspect, segH);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, segH * 0.46, z);
+        mesh.rotation.y = rotY;
+        mesh.renderOrder = 2;
+        scene.add(mesh);
+        addShadow(x, z, alongX ? segW * 0.95 : 0.34, alongX ? 0.34 : segW * 0.95);
+      }
+      const bSpace = 0.52;
+      const bn = Math.max(1, Math.round(len / bSpace));
+      for (let i = 0; i <= bn; i++) {
+        const t = i / bn;
+        const x = x0 + dx * t;
+        const z = z0 + dz * t;
+        if (skip && skip(x, z)) continue;
+        blockers.push({ kind: "fence", x, z, radius: 0.26, dead: false });
+      }
+    }
+
+    function addWorldPlane(tex, x, z, height, rotY) {
+      const img = tex.image;
+      const aspect = img.width / Math.max(1, img.height);
+      const w = height * aspect;
+      const geo = new THREE.PlaneGeometry(w, height);
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        alphaTest: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: true
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, height * 0.47, z);
+      mesh.rotation.y = rotY;
+      mesh.renderOrder = 2;
+      scene.add(mesh);
+      return { mesh, w, h: height };
+    }
+
+    function addLineBlockers(x0, z0, x1, z1, spacing, radius, kind) {
+      const dx = x1 - x0;
+      const dz = z1 - z0;
+      const len = Math.hypot(dx, dz) || 1;
+      const n = Math.max(1, Math.round(len / spacing));
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        blockers.push({
+          kind: kind || "prop",
+          x: x0 + dx * t,
+          z: z0 + dz * t,
+          radius,
+          dead: false
+        });
+      }
+    }
+
+    function paperMat(tex, color) {
+      return new THREE.MeshBasicMaterial({
+        map: tex || null,
+        color: color ?? 0xffffff,
+        side: THREE.DoubleSide,
+        depthWrite: true
+      });
+    }
+
+    function addPaperQuad(parent, mat, a, b, c, d, uvs) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([
+        a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2]
+      ]), 3));
+      geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs || [0, 0, 1, 0, 1, 1, 0, 1]), 2));
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+      parent.add(new THREE.Mesh(geo, mat));
+    }
+
+    function addPaperTri(parent, mat, a, b, c, uvs) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([
+        a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]
+      ]), 3));
+      geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs || [0, 0, 1, 0, 0.5, 1]), 2));
+      geo.setIndex([0, 1, 2]);
+      parent.add(new THREE.Mesh(geo, mat));
+    }
+
+    function addPaperBox(parent, mat, x0, y0, z0, x1, y1, z1) {
+      addPaperQuad(parent, mat, [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]);
+      addPaperQuad(parent, mat, [x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]);
+      addPaperQuad(parent, mat, [x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]);
+      addPaperQuad(parent, mat, [x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]);
+      addPaperQuad(parent, mat, [x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]);
+    }
+
+    function addHouse(spec) {
+      const W = spec.w;
+      const D = spec.d;
+      const wallH = spec.wallH;
+      const roofH = spec.roofH;
+      const yaw = spec.yaw || 0;
+      const hw = W * 0.5;
+      const hd = D * 0.5;
+      const y0 = -0.03;
+      const eave = 0.14;
+      const barge = 0.08;
+      const group = new THREE.Group();
+      const backX = -Math.sin(yaw);
+      const backZ = -Math.cos(yaw);
+      group.position.set(spec.x + backX * hd, 0, spec.z + backZ * hd);
+      group.rotation.y = yaw;
+      scene.add(group);
+
+      const frontMat = paperMat(spec.front);
+      const sideMat = paperMat(spec.side);
+      const backMat = paperMat(spec.back || spec.side);
+      const roofMat = paperMat(spec.roof);
+      const gableMat = paperMat(null, 0xcdb892);
+      const stoneMat = paperMat(null, 0x6b6560);
+
+      addPaperQuad(group, frontMat,
+        [-hw, y0, hd], [hw, y0, hd], [hw, wallH, hd], [-hw, wallH, hd]);
+      addPaperQuad(group, backMat,
+        [hw, y0, -hd], [-hw, y0, -hd], [-hw, wallH, -hd], [hw, wallH, -hd]);
+      addPaperQuad(group, sideMat,
+        [-hw, y0, -hd], [-hw, y0, hd], [-hw, wallH, hd], [-hw, wallH, -hd]);
+      addPaperQuad(group, sideMat,
+        [hw, y0, hd], [hw, y0, -hd], [hw, wallH, -hd], [hw, wallH, hd]);
+
+      const ridgeY = wallH + roofH;
+      const eaveY = wallH - 0.02;
+      addPaperQuad(group, roofMat,
+        [-hw - barge, ridgeY, 0], [hw + barge, ridgeY, 0],
+        [hw + barge, eaveY, hd + eave], [-hw - barge, eaveY, hd + eave],
+        [0, 1, 1, 1, 1, 0, 0, 0]);
+      addPaperQuad(group, roofMat,
+        [hw + barge, ridgeY, 0], [-hw - barge, ridgeY, 0],
+        [-hw - barge, eaveY, -hd - eave], [hw + barge, eaveY, -hd - eave],
+        [0, 1, 1, 1, 1, 0, 0, 0]);
+
+      addPaperTri(group, gableMat,
+        [-hw, wallH, hd], [-hw, ridgeY, 0], [-hw, wallH, -hd]);
+      addPaperTri(group, gableMat,
+        [hw, wallH, -hd], [hw, ridgeY, 0], [hw, wallH, hd]);
+
+      const chx0 = -hw * 0.4;
+      const chz0 = hd * 0.1;
+      const chz1 = chz0 + 0.3;
+      const tRoof = chz0 / Math.max(0.001, hd + eave);
+      const yOnRoof = ridgeY + (eaveY - ridgeY) * tRoof;
+      addPaperBox(group, stoneMat, chx0, yOnRoof - 0.05, chz0, chx0 + 0.28, yOnRoof + 0.52, chz1);
+
+      addShadow(spec.x + backX * hd, spec.z + backZ * hd, W * 0.95, D * 0.95);
+      const leftX = spec.x - Math.cos(yaw) * hw;
+      const leftZ = spec.z + Math.sin(yaw) * hw;
+      const rightX = spec.x + Math.cos(yaw) * hw;
+      const rightZ = spec.z - Math.sin(yaw) * hw;
+      addLineBlockers(leftX, leftZ, rightX, rightZ, 0.5, 0.4, "house");
+      addLineBlockers(leftX, leftZ, leftX + backX * D, leftZ + backZ * D, 0.5, 0.4, "house");
+      addLineBlockers(rightX, rightZ, rightX + backX * D, rightZ + backZ * D, 0.5, 0.4, "house");
+      addLineBlockers(
+        leftX + backX * D, leftZ + backZ * D,
+        rightX + backX * D, rightZ + backZ * D,
+        0.5, 0.4, "house"
+      );
+      blockers.push({
+        kind: "house",
+        x: spec.x + backX * hd,
+        z: spec.z + backZ * hd,
+        radius: Math.min(W, D) * 0.36,
+        dead: false
+      });
+    }
+
+    function makeCardCanvas() {
+      const frameW = 416;
+      const frameH = 640;
+      const padL = 110;
+      const padR = 56;
+      const padT = 96;
+      const padB = 28;
+      const c = document.createElement("canvas");
+      c.width = frameW + padL + padR;
+      c.height = frameH + padT + padB;
+      const g = c.getContext("2d");
+      g.imageSmoothingEnabled = true;
+      g.imageSmoothingQuality = "high";
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      t.needsUpdate = true;
+      return { canvas: c, ctx: g, tex: t, frameW, frameH, padL, padR, padT, padB };
+    }
+
+    function stripFrameCount(img) {
+      const w = img.width;
+      const h = img.height;
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const g = c.getContext("2d", { willReadFrequently: true });
+      g.drawImage(img, 0, 0);
+      const data = g.getImageData(0, 0, w, h).data;
+      const cols = new Float32Array(w);
+      for (let x = 0; x < w; x++) {
+        let n = 0;
+        for (let y = 0; y < h; y++) {
+          if (data[(y * w + x) * 4 + 3] > 12) n++;
+        }
+        cols[x] = n;
+      }
+      let best = 1;
+      let bestScore = 1e9;
+      for (let n = 2; n <= 24; n++) {
+        if (w % n !== 0) continue;
+        const fw = w / n;
+        if (fw < h * 0.5 || fw > h * 2.8) continue;
+        let acc = 0;
+        let cnt = 0;
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            let d = 0;
+            for (let k = 0; k < fw; k++) d += Math.abs(cols[i * fw + k] - cols[j * fw + k]);
+            acc += d;
+            cnt++;
+          }
+        }
+        const score = acc / Math.max(cnt, 1) / fw;
+        if (score < bestScore) {
+          best = n;
+          bestScore = score;
+        }
+      }
+      return best;
+    }
+
+    const ANIM_FPS = { idle: 8, walk: 10, run: 12, attack: 18, hit: 14, dead: 12 };
+
+    function addActor(strips, x, z, height, opts = {}) {
+      const anims = {};
+      let maxW = 1;
+      let maxH = 1;
+      for (const name of ["idle", "walk", "run", "attack", "hit", "dead"]) {
+        const src = strips[name] || (name === "run" ? strips.walk : null);
+        if (!src || !src.image) continue;
+        const frames = stripFrameCount(src.image);
+        const fw = src.image.width / frames;
+        const fh = src.image.height;
+        if (fw > maxW) maxW = fw;
+        if (fh > maxH) maxH = fh;
+        anims[name] = {
+          img: src.image,
+          frames,
+          fw,
+          fh,
+          fps: ANIM_FPS[name] || 10,
+          loop: name === "idle" || name === "walk" || name === "run"
+        };
+      }
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = Math.max(1, maxW | 0);
+      frameCanvas.height = Math.max(1, maxH | 0);
+      const frameCtx = frameCanvas.getContext("2d");
+      frameCtx.imageSmoothingEnabled = false;
+      const frameTex = new THREE.CanvasTexture(frameCanvas);
+      frameTex.colorSpace = THREE.SRGBColorSpace;
+      frameTex.magFilter = THREE.NearestFilter;
+      frameTex.minFilter = THREE.NearestFilter;
+      frameTex.needsUpdate = true;
+      const w = height * (frameCanvas.width / Math.max(1, frameCanvas.height));
+      const mat = new THREE.SpriteMaterial({
+        map: frameTex,
+        transparent: true,
+        alphaTest: 0.12,
+        depthWrite: true
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.center.set(0.5, 0.02);
+      spr.scale.set(w, height, 1);
+      spr.position.set(x, 0, z);
+      spr.renderOrder = 2;
+      scene.add(spr);
+      const shadow = addShadow(x, z, opts.sw ?? w * 0.72, opts.sh ?? w * 0.42);
+      const ent = {
+        kind: opts.kind || "npc",
+        sprite: spr,
+        shadow,
+        x, z, w, h: height,
+        face: 1,
+        radius: opts.radius ?? 0.4,
+        phase: 0,
+        seed: Math.random() * 100,
+        vx: 0, vz: 0, speed: 0,
+        wander: opts.wander || null,
+        hp: opts.hp ?? 0,
+        hpMax: opts.hp ?? 0,
+        atk: opts.atk ?? 0,
+        clash: null,
+        combatCd: 0,
+        hitT: 0,
+        visualOx: 0, visualOz: 0,
+        dead: false,
+        hpBar: null,
+        card: null,
+        anims,
+        animName: "idle",
+        animT: Math.random() * 0.4,
+        animFrame: -1,
+        animFlip: false,
+        frameCanvas,
+        frameCtx,
+        frameTex
+      };
+      if (opts.hp > 0) {
+        const bar = makeHpTex();
+        paintHp(bar, opts.hp, opts.hp, opts.kind === "player");
+        const bmat = new THREE.SpriteMaterial({
+          map: bar.t, transparent: true, depthWrite: false, alphaTest: 0.05
+        });
+        const bspr = new THREE.Sprite(bmat);
+        bspr.center.set(0.5, 0);
+        bspr.scale.set(1.05, 0.16, 1);
+        bspr.position.set(x, height + 0.1, z);
+        bspr.renderOrder = 6;
+        scene.add(bspr);
+        ent.hpBar = { ...bar, spr: bspr };
+      }
+      ents.push(ent);
+      if (ent.radius > 0) blockers.push(ent);
+      paintAnimFrame(ent, 0);
+      return ent;
+    }
+
+    function setAnim(ent, name) {
+      if (!ent.anims || ent.animName === name) return;
+      if (!ent.anims[name]) return;
+      ent.animName = name;
+      ent.animT = 0;
+      ent.animFrame = -1;
+      ent.animFlip = null;
+    }
+
+    function paintAnimFrame(ent, frame) {
+      const flip = ENABLE_SPRITE_FLIP && ent.face < 0;
+      if (ent.animFrame === frame && ent.animFlip === flip) return;
+      const a = ent.anims[ent.animName];
+      const cw = ent.frameCanvas.width;
+      const ch = ent.frameCanvas.height;
+      const fw = a.fw || cw;
+      const fh = a.fh || ch;
+      const dx = Math.floor((cw - fw) / 2);
+      const dy = ch - fh;
+      const g = ent.frameCtx;
+      ent.animFrame = frame;
+      ent.animFlip = flip;
+      g.clearRect(0, 0, cw, ch);
+      g.save();
+      if (flip) {
+        g.translate(cw, 0);
+        g.scale(-1, 1);
+      }
+      g.drawImage(a.img, frame * fw, 0, fw, fh, dx, dy, fw, fh);
+      g.restore();
+      ent.frameTex.needsUpdate = true;
+    }
+
+    function tickAnim(ent, dt) {
+      if (!ent.anims) return;
+      if (ent.hitT > 0) ent.hitT -= dt;
+      let name = "idle";
+      if (ent.dead) name = ent.anims.dead ? "dead" : "idle";
+      else if (ent.clash) name = "attack";
+      else if (ent.hitT > 0 && ent.anims.hit) name = "hit";
+      else if (ent.speed > 6.2) name = "run";
+      else if (ent.speed > 0.2) name = "walk";
+      if (!ent.anims[name]) name = ent.anims.idle ? "idle" : Object.keys(ent.anims)[0];
+      setAnim(ent, name);
+      const a = ent.anims[ent.animName];
+      ent.animT += dt;
+      let frame = Math.floor(ent.animT * a.fps);
+      frame = a.loop ? frame % a.frames : Math.min(a.frames - 1, frame);
+      paintAnimFrame(ent, frame);
+      if (!ent.clash) ent.sprite.scale.set(ent.w, ent.h, 1);
+    }
+
+    function faceFromMove(ent, camSin, camCos) {
+      if (!ENABLE_SPRITE_FLIP || ent.speed < 0.22) return;
+      const side = ent.vx * camCos - ent.vz * camSin;
+      if (Math.abs(side) > 0.18) ent.face = side > 0 ? 1 : -1;
+    }
+
+    function addBillboard(tex, x, z, height, opts = {}) {
+      const isCard = opts.kind === "player" || opts.kind === "npc";
+      let map = tex;
+      let w;
+      let card = null;
+      if (isCard && opts.frame) {
+        const sheet = makeCardCanvas();
+        map = sheet.tex;
+        const hWorld = height * (sheet.canvas.height / sheet.frameH);
+        w = hWorld * (sheet.canvas.width / sheet.canvas.height);
+        card = {
+          ...sheet,
+          frame: opts.frame,
+          charL: tex,
+          charR: ENABLE_SPRITE_FLIP ? makeFlippedTex(tex) : tex,
+          name: opts.name || "",
+          ally: !!opts.ally,
+          eqIcons: opts.eqIcons || null,
+          spring: {
+            x: 0, y: 0, vx: 0, vy: 0,
+            lastX: x, lastY: 0, lastZ: z, primed: false
+          }
+        };
+        opts = { ...opts, y: opts.y, cx: 0.5, cy: (sheet.padB + sheet.frameH * (opts.cy ?? 0.04)) / sheet.canvas.height };
+        height = hWorld;
+      } else {
+        const img = tex.image;
+        const aspect = img.width / Math.max(1, img.height);
+        w = height * aspect;
+      }
+      const mat = new THREE.SpriteMaterial({
+        map,
+        transparent: true,
+        alphaTest: 0.18,
+        depthWrite: true,
+        rotation: 0
+      });
+      const spr = new THREE.Sprite(mat);
+      spr.center.set(opts.cx ?? 0.5, opts.cy ?? 0.02);
+      spr.scale.set(w, height, 1);
+      spr.position.set(x, opts.y ?? 0, z);
+      spr.renderOrder = 2;
+      scene.add(spr);
+      const shadow = opts.shadow === false ? null : addShadow(x, z, opts.sw ?? w * 0.72, opts.sh ?? w * 0.42);
+      const ent = {
+        kind: opts.kind || "prop",
+        sprite: spr,
+        shadow,
+        x, z,
+        w, h: height,
+        face: 1,
+        mapL: tex,
+        mapR: ENABLE_SPRITE_FLIP && (opts.kind === "player" || opts.kind === "npc")
+          ? (card ? card.charR : makeFlippedTex(tex))
+          : tex,
+        radius: opts.radius ?? 0,
+        phase: Math.random() * TAU,
+        seed: Math.random() * 100,
+        vx: 0, vz: 0,
+        speed: 0,
+        wander: opts.wander || null,
+        hp: opts.hp ?? 0,
+        hpMax: opts.hp ?? 0,
+        atk: opts.atk ?? 0,
+        clash: null,
+        combatCd: 0,
+        visualOx: 0,
+        visualOz: 0,
+        dead: false,
+        hpBar: null,
+        card
+      };
+      if (opts.hp > 0 && !card) {
+        const bar = makeHpTex();
+        paintHp(bar, opts.hp, opts.hp, opts.kind === "player");
+        const bmat = new THREE.SpriteMaterial({
+          map: bar.t, transparent: true, depthWrite: false, alphaTest: 0.05
+        });
+        const bspr = new THREE.Sprite(bmat);
+        bspr.center.set(0.5, 0);
+        bspr.scale.set(1.15, 0.18, 1);
+        bspr.position.set(x, height + 0.12, z);
+        bspr.renderOrder = 6;
+        scene.add(bspr);
+        ent.hpBar = { ...bar, spr: bspr };
+      }
+      if (card) paintCard(ent);
+      ents.push(ent);
+      if (ent.radius > 0) blockers.push(ent);
+      return ent;
+    }
+
+    function makeFlippedTex(tex) {
+      const img = tex.image;
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext("2d");
+      g.translate(c.width, 0);
+      g.scale(-1, 1);
+      g.drawImage(img, 0, 0);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.LinearFilter;
+      t.minFilter = THREE.LinearFilter;
+      t.needsUpdate = true;
+      return t;
+    }
+
+    function applyFace(ent) {
+      if (!ENABLE_SPRITE_FLIP || ent.card || !ent.mapR) return;
+      const next = ent.face < 0 ? ent.mapR : ent.mapL;
+      if (ent.sprite.material.map !== next) {
+        ent.sprite.material.map = next;
+        ent.sprite.material.needsUpdate = true;
+      }
+    }
+
+    function updatePortraitSpring(ent, dt) {
+      const s = ent.card.spring;
+      const px = ent.sprite.position.x;
+      const py = ent.sprite.position.y;
+      const pz = ent.sprite.position.z;
+      if (!s.primed) {
+        s.lastX = px;
+        s.lastY = py;
+        s.lastZ = pz;
+        s.primed = true;
+        return;
+      }
+      const invDt = 1 / Math.max(dt, 0.0008);
+      const vx = (px - s.lastX) * invDt;
+      const vy = (py - s.lastY) * invDt;
+      const vz = (pz - s.lastZ) * invDt;
+      s.lastX = px;
+      s.lastY = py;
+      s.lastZ = pz;
+
+      const sx = vx * Math.cos(yaw) + vz * -Math.sin(yaw);
+      const sy = vy;
+      const targetX = -sx * 5.4;
+      const targetY = -sy * 6.2;
+      const stiff = 68;
+      const damp = 9.2;
+      s.vx += ((targetX - s.x) * stiff - s.vx * damp) * dt;
+      s.vy += ((targetY - s.y) * stiff - s.vy * damp) * dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+
+      const limX = 28;
+      const limY = 34;
+      if (s.x > limX) { s.x = limX; s.vx *= 0.35; }
+      else if (s.x < -limX) { s.x = -limX; s.vx *= 0.35; }
+      if (s.y > limY) { s.y = limY; s.vy *= 0.35; }
+      else if (s.y < -limY) { s.y = -limY; s.vy *= 0.35; }
+    }
+
+    function measureBodyPivot(img) {
+      if (img._bodyPivot) return img._bodyPivot;
+      const fallback = { x: 0.5, top: 0.02, bottom: 0.98 };
+      try {
+        const srcW = img.width || 1;
+        const srcH = img.height || 1;
+        const w = 96;
+        const h = Math.max(8, (srcH * w / srcW) | 0);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const g = c.getContext("2d", { willReadFrequently: true });
+        if (!g) {
+          img._bodyPivot = fallback;
+          return fallback;
+        }
+        g.drawImage(img, 0, 0, w, h);
+        const data = g.getImageData(0, 0, w, h).data;
+        const col = new Float64Array(w);
+        const yA = (h * 0.42) | 0;
+        const yB = (h * 0.92) | 0;
+        for (let y = yA; y < yB; y++) {
+          for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 24) col[x]++;
+          }
+        }
+        let mx = 0;
+        for (let x = 0; x < w; x++) if (col[x] > mx) mx = col[x];
+        const thr = mx * 0.38;
+        let sum = 0, wt = 0;
+        for (let x = 0; x < w; x++) {
+          if (col[x] >= thr) {
+            sum += x * col[x];
+            wt += col[x];
+          }
+        }
+        let top = h, bot = 0;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            if (col[x] < thr) continue;
+            if (data[(y * w + x) * 4 + 3] > 24) {
+              if (y < top) top = y;
+              if (y > bot) bot = y;
+            }
+          }
+        }
+        img._bodyPivot = {
+          x: wt > 0 ? sum / wt / w : 0.5,
+          top: top < bot ? top / h : fallback.top,
+          bottom: top < bot ? (bot + 1) / h : fallback.bottom
+        };
+      } catch (err) {
+        img._bodyPivot = fallback;
+      }
+      return img._bodyPivot;
+    }
+
+    function paintCard(ent) {
+      const card = ent.card;
+      if (!card) return;
+      const g = card.ctx;
+      const W = card.canvas.width;
+      const H = card.canvas.height;
+      const ally = card.ally;
+      const ox = card.padL || 0;
+      const oy = card.padT || 0;
+      const FW = card.frameW || 416;
+      const FH = card.frameH || 640;
+      g.clearRect(0, 0, W, H);
+      g.drawImage(card.frame.image, ox, oy, FW, FH);
+
+      const px = 72 + ox;
+      const py = 102 + oy;
+      const pw = 272;
+      const ph = 360;
+
+      if (ally && card.eqIcons) {
+        g.save();
+        g.beginPath();
+        g.rect(px, py, pw, ph);
+        g.clip();
+        const sheet = card.eqIcons.image;
+        const cell = 72;
+        const slot = 32;
+        const gap = 7;
+        const leftX = px + 4;
+        const rightX = px + pw - 4 - slot;
+        const leftYs = [py + 42, py + 42 + slot + gap, py + 42 + (slot + gap) * 2];
+        const rightYs = [py + 18, py + 18 + slot + gap, py + 18 + (slot + gap) * 2, py + 18 + (slot + gap) * 3];
+        drawEqSlot(g, sheet, cell, 0, 0, leftX, leftYs[0], slot);
+        drawEqSlot(g, sheet, cell, 0, 1, leftX, leftYs[1], slot);
+        drawEqSlot(g, sheet, cell, 0, 3, leftX, leftYs[2], slot);
+        drawEqSlot(g, sheet, cell, 1, 0, rightX, rightYs[0], slot);
+        drawEqSlot(g, sheet, cell, 1, 1, rightX, rightYs[1], slot);
+        drawEqSlot(g, sheet, cell, 0, 2, rightX, rightYs[2], slot);
+        drawEqSlot(g, sheet, cell, 1, 2, rightX, rightYs[3], slot);
+        const bSlot = 30;
+        const bGap = 8;
+        const bCount = 4;
+        const bW = bCount * bSlot + (bCount - 1) * bGap;
+        let bx = px + Math.floor((pw - bW) / 2);
+        const by = py + ph - bSlot - 8;
+        const bottom = [[1, 3], [0, 2], [1, 2], [0, 3]];
+        for (let i = 0; i < bCount; i++) {
+          drawEqSlot(g, sheet, cell, bottom[i][0], bottom[i][1], bx, by, bSlot);
+          bx += bSlot + bGap;
+        }
+        g.restore();
+      }
+
+      const img = (ENABLE_SPRITE_FLIP && ent.face < 0 ? card.charR : card.charL).image;
+      const pivot = measureBodyPivot(img);
+      const bodyH = Math.max(0.25, (pivot.bottom || 0.98) - (pivot.top || 0.02));
+      const fit = (ph * (ally ? 1.0 : 0.94)) / (bodyH * Math.max(1, img.height));
+      const chW = img.width * fit;
+      const chH = img.height * fit;
+      const cx = px + pw * 0.5 + card.spring.x;
+      const destBottom = py + ph * 0.99 + card.spring.y;
+      const destY = destBottom - (pivot.bottom || 1) * chH;
+      g.drawImage(img, cx - chW * (pivot.x || 0.5), destY, chW, chH);
+
+      g.save();
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.shadowColor = "rgba(0,0,0,0.9)";
+      g.shadowBlur = 5;
+      g.fillStyle = ally ? "#f6e4b0" : "#ffd4c6";
+      g.font = "bold 38px 'Microsoft YaHei', sans-serif";
+      g.fillText(String(ent.atk), ox + FW * 0.172, oy + FH * 0.152);
+      g.restore();
+
+      g.save();
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.shadowColor = "#000";
+      g.shadowBlur = 4;
+      g.fillStyle = "#f3ead4";
+      g.font = "bold 26px 'Microsoft YaHei', sans-serif";
+      g.fillText(card.name, ox + FW * 0.5, oy + FH * 0.805);
+      g.restore();
+
+      const hx = ox + FW * 0.20;
+      const hy = oy + FH * 0.868;
+      const hw = FW * 0.60;
+      const hh = 17;
+      const ratio = Math.max(0, Math.min(1, ent.hp / Math.max(1, ent.hpMax)));
+      g.fillStyle = "rgba(8,6,4,0.9)";
+      g.fillRect(hx, hy, hw, hh);
+      g.fillStyle = ally ? "#2db85a" : "#c43a32";
+      if (ratio < 0.3) g.fillStyle = "#d4a024";
+      if (ent.hp <= 0) g.fillStyle = "#5a2a22";
+      g.fillRect(hx + 1, hy + 1, (hw - 2) * ratio, hh - 2);
+      g.strokeStyle = ally ? "#e6d3a6" : "#c08070";
+      g.lineWidth = 1.6;
+      g.strokeRect(hx, hy, hw, hh);
+      g.shadowBlur = 0;
+      g.fillStyle = "#f4ead0";
+      g.font = "bold 13px 'Microsoft YaHei', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(Math.ceil(ent.hp) + "/" + ent.hpMax, hx + hw * 0.5, hy + hh * 0.55);
+
+      card.tex.needsUpdate = true;
+    }
+
+    function drawEqSlot(g, sheet, cell, col, row, x, y, slot) {
+      g.fillStyle = "rgba(8,6,4,0.72)";
+      g.fillRect(x - 1, y - 1, slot + 2, slot + 2);
+      g.strokeStyle = "rgba(214, 176, 96, 0.85)";
+      g.lineWidth = 1.4;
+      g.strokeRect(x - 1, y - 1, slot + 2, slot + 2);
+      g.drawImage(sheet, col * cell, row * cell, cell, cell, x, y, slot, slot);
+    }
+
+    function occupied(x, z, min) {
+      if (Math.hypot(x, z) < 10.2) return true;
+      for (const b of blockers) {
+        if (Math.hypot(x - b.x, z - b.z) < min + b.radius) return true;
+      }
+      return false;
+    }
+
+    function sync(ent) {
+      ent.sprite.position.x = ent.x + (ent.visualOx || 0);
+      ent.sprite.position.z = ent.z + (ent.visualOz || 0);
+      if (ent.shadow) {
+        ent.shadow.position.x = ent.x;
+        ent.shadow.position.z = ent.z;
+        ent.shadow.visible = !ent.dead;
+      }
+      if (ent.hpBar) {
+        ent.hpBar.spr.position.set(ent.x, ent.h + 0.16, ent.z);
+        ent.hpBar.spr.visible = !ent.dead || ent.hp > 0;
+      }
+    }
+
+    function collide(ent) {
+      const lim = WORLD * 0.46;
+      ent.x = Math.max(-lim, Math.min(lim, ent.x));
+      ent.z = Math.max(-lim, Math.min(lim, ent.z));
+      for (const b of blockers) {
+        if (b === ent || b.dead) continue;
+        if ((ent.kind === "player" && b.kind === "npc") || (ent.kind === "npc" && b.kind === "player")) continue;
+        const dx = ent.x - b.x;
+        const dz = ent.z - b.z;
+        const d = Math.hypot(dx, dz) || 0.0001;
+        const min = ent.radius + b.radius;
+        if (d < min) {
+          const k = (min - d) / d;
+          ent.x += dx * k;
+          ent.z += dz * k;
+        }
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      keys.add(e.code);
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+    });
+    window.addEventListener("keyup", (e) => keys.delete(e.code));
+
+    const touchUi = document.getElementById("touch-ui");
+    const stickEl = document.getElementById("stick");
+    const knobEl = document.getElementById("stick-knob");
+    const runBtn = document.getElementById("btn-run");
+    const stick = { x: 0, z: 0, pid: -1, run: false };
+
+    window.addEventListener("touchstart", () => touchUi.classList.add("show"), { passive: true });
+
+    function setStick(nx, nz) {
+      const len = Math.hypot(nx, nz);
+      if (len > 1) { nx /= len; nz /= len; }
+      stick.x = nx;
+      stick.z = nz;
+      knobEl.style.transform = "translate(" + (nx * 36) + "px," + (nz * 36) + "px)";
+    }
+
+    function stickFromEvent(e) {
+      const r = stickEl.getBoundingClientRect();
+      const max = Math.max(24, r.width * 0.38);
+      setStick((e.clientX - (r.left + r.width * 0.5)) / max, (e.clientY - (r.top + r.height * 0.5)) / max);
+    }
+
+    function endStick(pid) {
+      if (pid !== undefined && stick.pid !== pid) return;
+      stick.pid = -1;
+      setStick(0, 0);
+    }
+
+    stickEl.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      stick.pid = e.pointerId;
+      stickEl.setPointerCapture(e.pointerId);
+      stickFromEvent(e);
+    });
+    stickEl.addEventListener("pointermove", (e) => {
+      if (stick.pid !== e.pointerId) return;
+      e.preventDefault();
+      stickFromEvent(e);
+    });
+    stickEl.addEventListener("pointerup", (e) => { e.stopPropagation(); endStick(e.pointerId); });
+    stickEl.addEventListener("pointercancel", (e) => endStick(e.pointerId));
+
+    function setRunHold(on) {
+      stick.run = on;
+      runBtn.classList.toggle("hold", on);
+    }
+    runBtn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      runBtn.setPointerCapture(e.pointerId);
+      setRunHold(true);
+    });
+    runBtn.addEventListener("pointerup", () => setRunHold(false));
+    runBtn.addEventListener("pointercancel", () => setRunHold(false));
+
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.target.closest && e.target.closest("#touch-ui")) return;
+      if (e.pointerType === "touch" && e.clientX < innerWidth * 0.52) return;
+      mouse.down = true;
+      mouse.x = e.clientX;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointerup", () => { mouse.down = false; });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!mouse.down) return;
+      yaw -= (e.clientX - mouse.x) * 0.0055;
+      mouse.x = e.clientX;
+    });
+    window.addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    function inputAxis() {
+      let x = 0, z = 0;
+      if (keys.has("KeyW") || keys.has("ArrowUp")) z -= 1;
+      if (keys.has("KeyS") || keys.has("ArrowDown")) z += 1;
+      if (keys.has("KeyA") || keys.has("ArrowLeft")) x -= 1;
+      if (keys.has("KeyD") || keys.has("ArrowRight")) x += 1;
+      const usingStick = Math.abs(stick.x) > 0.08 || Math.abs(stick.z) > 0.08;
+      if (usingStick) {
+        x = stick.x;
+        z = stick.z;
+      }
+      const len = Math.hypot(x, z);
+      if (len > 1) { x /= len; z /= len; }
+      const run = keys.has("ShiftLeft") || keys.has("ShiftRight") || stick.run
+        || (usingStick && Math.hypot(stick.x, stick.z) > 0.78);
+      return { x, z, run };
+    }
+
+    function dealHit(attacker, defender) {
+      if (!defender || defender.dead) return;
+      defender.hp = Math.max(0, defender.hp - attacker.atk);
+      if (defender.hpBar) paintHp(defender.hpBar, defender.hp, defender.hpMax, defender.kind === "player");
+      const dx = defender.x - attacker.x;
+      const dz = defender.z - attacker.z;
+      const d = Math.hypot(dx, dz) || 1;
+      defender.x += (dx / d) * 0.42;
+      defender.z += (dz / d) * 0.42;
+      defender.hitT = 0.28;
+      if (defender.hp <= 0) killEnt(defender);
+    }
+
+    function killEnt(ent) {
+      ent.dead = true;
+      ent.hp = 0;
+      ent.clash = null;
+      ent.speed = 0;
+      if (ent.kind !== "player") {
+        const i = blockers.indexOf(ent);
+        if (i >= 0) blockers.splice(i, 1);
+      }
+      if (ent.hpBar) paintHp(ent.hpBar, 0, ent.hpMax, ent.kind === "player");
+    }
+
+    function startClash(a, b) {
+      if (a.clash || b.clash || a.dead || b.dead) return;
+      if (a.combatCd > 0 || b.combatCd > 0) return;
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const d = Math.hypot(dx, dz) || 1;
+      const nx = dx / d, nz = dz / d;
+      a.clash = { t: 0, dur: 0.46, nx, nz, sign: 1, other: b, hit: false };
+      b.clash = { t: 0, dur: 0.46, nx, nz, sign: -1, other: a, hit: false };
+      a.combatCd = 0.78;
+      b.combatCd = 0.78;
+      outCombat = 0;
+    }
+
+    function tickClash(ent, dt) {
+      const c = ent.clash;
+      if (!c) return;
+      c.t += dt;
+      const u = Math.min(1, c.t / c.dur);
+      let travel;
+      if (u < 0.34) travel = (u / 0.34) * 1.05;
+      else if (u < 0.42) travel = 1.05;
+      else {
+        const b = (u - 0.42) / 0.58;
+        travel = 1.05 * (1 - b) * (1 - b) - Math.sin(b * Math.PI) * 0.32;
+      }
+      ent.visualOx = c.nx * travel * c.sign * 0.72;
+      ent.visualOz = c.nz * travel * c.sign * 0.72;
+      ent.sprite.position.x = ent.x + ent.visualOx;
+      ent.sprite.position.z = ent.z + ent.visualOz;
+
+      if (u >= 0.34 && !c.hit) {
+        c.hit = true;
+        if (ent.kind === "player") {
+          dealHit(ent, c.other);
+          dealHit(c.other, ent);
+          spawnBurst(ent.x + c.nx * 0.45, ent.z + c.nz * 0.45);
+        }
+      }
+
+      const flash = u > 0.3 && u < 0.52 ? 1 - Math.abs(u - 0.38) / 0.14 : 0;
+      const col = 1 + flash * 1.6;
+      ent.sprite.material.color.setRGB(col, col, 0.82 + flash * 0.55);
+      const punch = 1 + (flash > 0 ? flash * 0.1 : 0);
+      const sx = ent.w * punch;
+      ent.sprite.scale.set(sx, ent.h * punch, 1);
+      ent.sprite.material.rotation = (0.5 - u) * 0.06 * c.sign;
+      ent.sprite.position.y = 0.06 + Math.abs(Math.sin(u * Math.PI)) * 0.16;
+
+      if (u >= 1) {
+        ent.clash = null;
+        ent.visualOx = 0;
+        ent.visualOz = 0;
+        ent.sprite.material.color.setRGB(1, 1, 1);
+      }
+    }
+
+    function animateEnt(ent, dt) {
+      const spr = ent.sprite;
+
+      if (ent.kind === "tree" || ent.kind === "bush") {
+        const amp = ent.kind === "tree" ? 0.03 : 0.055;
+        const spd = ent.kind === "tree" ? 0.7 : 1.25;
+        spr.material.rotation = Math.sin(time * spd + ent.seed) * amp;
+        return;
+      }
+
+      if (ent.kind !== "player" && ent.kind !== "npc") return;
+
+      tickAnim(ent, dt);
+
+      if (ent.dead) {
+        ent.visualOx *= 0.9;
+        ent.visualOz *= 0.9;
+        spr.position.y = 0.02;
+        if (ent.anims && ent.anims.dead) {
+          spr.material.rotation = 0;
+          spr.material.opacity = 1;
+          spr.scale.set(ent.w, ent.h, 1);
+        } else {
+          spr.material.rotation = Math.min(0.85, spr.material.rotation + dt * 1.8);
+          spr.material.opacity = Math.max(0.15, spr.material.opacity - dt * 0.7);
+          spr.material.alphaTest = 0.05;
+          spr.scale.set(ent.w, ent.h * Math.max(0.35, 1 - spr.material.rotation), 1);
+        }
+        if (ent.hpBar) ent.hpBar.spr.visible = false;
+      } else if (ent.clash) {
+        tickClash(ent, dt);
+      } else {
+        spr.position.y = 0.02;
+        spr.material.rotation = 0;
+      }
+    }
+
+    async function boot() {
+      const names = [
+        "tree1", "tree2", "tree3", "tree4", "tree5",
+        "bush1", "bush2", "bush3", "bush4", "bush5",
+        "stump1", "stump2", "stump3", "rock1",
+        "house1_wall", "house1_wall_side", "house1_roof",
+        "house2_wall", "house2_wall_side", "house2_roof", "fence1"
+      ];
+      const tex = {};
+      await Promise.all(names.map(async (n) => {
+        tex[n] = await loadTex("assets/sprites/" + n + ".png");
+      }));
+      const animFiles = {
+        idle: "WarriorChIdle",
+        walk: "WarriorChWalk",
+        run: "WarriorChHRun",
+        attack: "WarriorChAttack"
+      };
+      await Promise.all(Object.keys(animFiles).map(async (k) => {
+        tex[animFiles[k]] = await loadTex("assets/sprites/WarriorChAnimation/" + animFiles[k] + ".png");
+      }));
+      const warrior = {
+        idle: tex.WarriorChIdle,
+        walk: tex.WarriorChWalk,
+        run: tex.WarriorChHRun,
+        attack: tex.WarriorChAttack
+      };
+      const monsterFiles = {
+        idle: "Skeleton Idle.png",
+        walk: "Skeleton Walk.png",
+        attack: "Skeleton Attack.png",
+        hit: "Skeleton Hit.png",
+        dead: "Skeleton Dead.png"
+      };
+      const monsterTex = {};
+      await Promise.all(Object.keys(monsterFiles).map(async (k) => {
+        monsterTex[k] = await loadTex("assets/sprites/monster1/" + encodeURIComponent(monsterFiles[k]));
+      }));
+
+      const groundMat = new THREE.MeshLambertMaterial({ color: 0xc8b48c });
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD * 2, WORLD * 2), groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      scene.add(ground);
+      try {
+        const gt = await loadTex("assets/ground.png");
+        gt.wrapS = gt.wrapT = THREE.RepeatWrapping;
+        gt.repeat.set(WORLD / 9, WORLD / 9);
+        gt.anisotropy = 8;
+        groundMat.map = gt;
+        groundMat.color.set(0xffffff);
+        groundMat.needsUpdate = true;
+      } catch (e) { /* keep fallback color */ }
+
+      const trees = [tex.tree1, tex.tree2, tex.tree3, tex.tree4, tex.tree5];
+      const bushes = [tex.bush1, tex.bush2, tex.bush3, tex.bush4, tex.bush5];
+      const stumps = [tex.stump1, tex.stump2, tex.stump3];
+
+      const player = addActor(warrior, 0.6, 0.3, 1.22, {
+        kind: "player", radius: 0.2, sw: 0.52, sh: 0.27, hp: 100, atk: 18
+      });
+
+      addActor(monsterTex, -4.8, -2.2, 1.67, {
+        kind: "npc", radius: 0.29, sw: 0.7, sh: 0.36, hp: 30, atk: 8,
+        wander: { r: 4.2, ox: -4.8, oz: -2.2, tx: -4.8, tz: -2.2 }
+      });
+      addActor(monsterTex, 4.4, 3.1, 1.67, {
+        kind: "npc", radius: 0.29, sw: 0.7, sh: 0.36, hp: 25, atk: 7,
+        wander: { r: 4.8, ox: 4.4, oz: 3.1, tx: 5.5, tz: 2.2 }
+      });
+      addActor(monsterTex, -2.4, -14.8, 1.62, {
+        kind: "npc", radius: 0.29, sw: 0.69, sh: 0.35, hp: 30, atk: 8,
+        wander: { r: 3.6, ox: -2.4, oz: -14.8, tx: -1, tz: -13 }
+      });
+
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * TAU + rngG() * 0.1;
+        const r = 10.4 + rngG() * 2.6;
+        const s = 0.92 + rngG() * 0.38;
+        addBillboard(trees[i % trees.length], Math.cos(a) * r, Math.sin(a) * r, 5.4 * s, {
+          kind: "tree", radius: 0.62 * s, sw: 1.7 * s, sh: 0.95 * s
+        });
+      }
+
+      for (let i = 0; i < 26; i++) {
+        const a = rngG() * TAU;
+        const r = 3.3 + rngG() * 6.4;
+        const s = 0.75 + rngG() * 0.4;
+        addBillboard(bushes[i % bushes.length], Math.cos(a) * r, Math.sin(a) * r, 1.05 * s, {
+          kind: "bush", sw: 0.8 * s, sh: 0.45 * s
+        });
+      }
+      for (let i = 0; i < 10; i++) {
+        const a = rngG() * TAU;
+        const r = 3.0 + rngG() * 5.8;
+        addBillboard(tex.rock1, Math.cos(a) * r, Math.sin(a) * r, 0.62, {
+          kind: "rock", radius: 0.22, sw: 0.55, sh: 0.32
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = rngG() * TAU;
+        const r = 4.2 + rngG() * 5.5;
+        addBillboard(stumps[i % stumps.length], Math.cos(a) * r, Math.sin(a) * r, 0.85, {
+          kind: "stump", radius: 0.35, sw: 0.8, sh: 0.45
+        });
+      }
+
+      for (let i = 0; i < 95; i++) {
+        let x, z, n = 0;
+        do {
+          x = (rngG() - 0.5) * 78;
+          z = (rngG() - 0.5) * 78;
+          n++;
+        } while (occupied(x, z, 1.4) && n < 40);
+        if (n >= 40) continue;
+        const s = 0.88 + rngG() * 0.5;
+        addBillboard(trees[i % trees.length], x, z, 5.1 * s, {
+          kind: "tree", radius: 0.58 * s, sw: 1.6 * s, sh: 0.9 * s
+        });
+      }
+
+      for (let i = 0; i < 70; i++) {
+        const x = (rngG() - 0.5) * 76;
+        const z = (rngG() - 0.5) * 76;
+        if (Math.hypot(x, z) < 2.4) continue;
+        const s = 0.72 + rngG() * 0.5;
+        addBillboard(bushes[i % bushes.length], x, z, 1.0 * s, {
+          kind: "bush", sw: 0.75 * s, sh: 0.42 * s
+        });
+      }
+
+      for (let i = 0; i < 18; i++) {
+        let x, z, n = 0;
+        do {
+          x = (rngG() - 0.5) * 70;
+          z = (rngG() - 0.5) * 70;
+          n++;
+        } while (occupied(x, z, 1.1) && n < 25);
+        addBillboard(stumps[i % stumps.length], x, z, 0.82, {
+          kind: "stump", radius: 0.32, sw: 0.75, sh: 0.42
+        });
+      }
+
+      const rngH = mulberry(20260823);
+      const yard = { x0: -6.4, x1: 16.8, z0: -53.4, z1: -43.6 };
+      const gate = { x0: 3.1, x1: 7.1 };
+      const inYard = (x, z, pad) =>
+        x > yard.x0 - pad && x < yard.x1 + pad && z > yard.z0 - pad && z < yard.z1 + pad;
+
+      addHouse({
+        front: tex.house1_wall, side: tex.house1_wall_side, roof: tex.house1_roof,
+        x: -1.1, z: -49.8, w: 5.5, d: 3.4, wallH: 2.58, roofH: 1.82, yaw: 0
+      });
+      addHouse({
+        front: tex.house2_wall, side: tex.house2_wall_side, roof: tex.house2_roof,
+        x: 10.6, z: -49.1, w: 4.15, d: 2.95, wallH: 2.28, roofH: 1.62, yaw: 0
+      });
+
+      const skipGate = (x, z) => z > -45.2 && x > gate.x0 && x < gate.x1;
+      addFenceRun(tex.fence1, yard.x0, yard.z1, yard.x1, yard.z1, 1.18, skipGate);
+      addFenceRun(tex.fence1, yard.x0, yard.z0, yard.x1, yard.z0, 1.18);
+      addFenceRun(tex.fence1, yard.x0, yard.z0, yard.x0, yard.z1, 1.18);
+      addFenceRun(tex.fence1, yard.x1, yard.z0, yard.x1, yard.z1, 1.18);
+
+      for (let i = 0; i < 24; i++) {
+        let x, z, n = 0;
+        do {
+          x = yard.x0 - 9 + rngH() * (yard.x1 - yard.x0 + 18);
+          z = yard.z0 - 8 + rngH() * (yard.z1 - yard.z0 + 14);
+          n++;
+        } while ((inYard(x, z, 1.15) || occupied(x, z, 1.55) || (Math.abs(x - 5.1) < 3.4 && z > -44.8 && z < -36.5)) && n < 35);
+        if (n >= 35) continue;
+        const s = 0.86 + rngH() * 0.48;
+        addBillboard(trees[i % trees.length], x, z, 5.15 * s, {
+          kind: "tree", radius: 0.58 * s, sw: 1.6 * s, sh: 0.9 * s
+        });
+      }
+
+      for (let i = 0; i < 22; i++) {
+        const along = rngH();
+        let x, z;
+        if (along < 0.55) {
+          x = yard.x0 - 1.4 + rngH() * (yard.x1 - yard.x0 + 2.8);
+          z = (rngH() < 0.5 ? yard.z0 : yard.z1) + (rngH() - 0.5) * 1.6;
+        } else {
+          x = (rngH() < 0.5 ? yard.x0 : yard.x1) + (rngH() - 0.5) * 1.6;
+          z = yard.z0 - 1.1 + rngH() * (yard.z1 - yard.z0 + 2.2);
+        }
+        if (skipGate(x, z) || occupied(x, z, 1.25)) continue;
+        const s = 0.7 + rngH() * 0.48;
+        addBillboard(bushes[i % bushes.length], x, z, 1.02 * s, {
+          kind: "bush", sw: 0.76 * s, sh: 0.42 * s
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        const x = -2.2 + rngH() * 14.5;
+        const z = -52.2 + rngH() * 7.4;
+        if (occupied(x, z, 1.35)) continue;
+        const s = 0.68 + rngH() * 0.4;
+        addBillboard(bushes[(i + 2) % bushes.length], x, z, 0.96 * s, {
+          kind: "bush", sw: 0.72 * s, sh: 0.4 * s
+        });
+      }
+
+      let last = performance.now();
+      function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        time += dt;
+
+        if (keys.has("KeyQ")) yaw += 1.55 * dt;
+        if (keys.has("KeyE")) yaw -= 1.55 * dt;
+
+        const axis = inputAxis();
+        const camSin = Math.sin(yaw);
+        const camCos = Math.cos(yaw);
+        const wx = axis.x * camCos + axis.z * camSin;
+        const wz = -axis.x * camSin + axis.z * camCos;
+        const canMove = player.hp > 0 && !player.clash;
+        const spd = canMove ? (axis.run ? 8.2 : 5.1) : 0;
+        player.vx = wx * spd;
+        player.vz = wz * spd;
+        player.speed = Math.hypot(player.vx, player.vz);
+        player.x += player.vx * dt;
+        player.z += player.vz * dt;
+        if (ENABLE_SPRITE_FLIP && canMove && Math.abs(axis.x) > 0.05) {
+          player.face = axis.x > 0 ? 1 : -1;
+        } else if (canMove) {
+          faceFromMove(player, camSin, camCos);
+        }
+        collide(player);
+        sync(player);
+
+        if (player.combatCd > 0) player.combatCd -= dt;
+        let nearEnemy = false;
+        for (const ent of ents) {
+          if (ent.kind !== "npc") continue;
+          if (ent.combatCd > 0) ent.combatCd -= dt;
+          if (ent.dead) {
+            ent.speed = 0;
+            sync(ent);
+            continue;
+          }
+          const distP = Math.hypot(ent.x - player.x, ent.z - player.z);
+          if (distP < 2.4 && player.hp > 0) nearEnemy = true;
+          if (distP < 1.55 && player.hp > 0) startClash(player, ent);
+
+          if (ent.clash) {
+            ent.speed = 0;
+          } else if (ent.wander) {
+            const w = ent.wander;
+            if (Math.hypot(ent.x - w.tx, ent.z - w.tz) < 0.45) {
+              const a = rngG() * TAU;
+              w.tx = w.ox + Math.cos(a) * w.r * rngG();
+              w.tz = w.oz + Math.sin(a) * w.r * rngG();
+            }
+            const dx = w.tx - ent.x;
+            const dz = w.tz - ent.z;
+            const d = Math.hypot(dx, dz) || 1;
+            const nspd = distP < 2.8 && player.hp > 0 ? 2.1 : 1.35;
+            ent.vx = (dx / d) * nspd;
+            ent.vz = (dz / d) * nspd;
+            ent.speed = nspd;
+            ent.x += ent.vx * dt;
+            ent.z += ent.vz * dt;
+            faceFromMove(ent, camSin, camCos);
+            collide(ent);
+          }
+          sync(ent);
+        }
+
+        if (nearEnemy || player.clash) outCombat = 0;
+        else outCombat += dt;
+        if (outCombat > 1.6) {
+          if (player.hp < player.hpMax) {
+            player.hp = Math.min(player.hpMax, player.hp + (player.hp <= 0 ? 4 : 6) * dt);
+            if (player.hpBar) paintHp(player.hpBar, player.hp, player.hpMax, true);
+          }
+          if (player.dead && player.hp >= 12) {
+            player.dead = false;
+            player.sprite.material.opacity = 1;
+            player.sprite.material.alphaTest = 0.18;
+            player.sprite.material.color.setRGB(1, 1, 1);
+          }
+          for (const ent of ents) {
+            if (ent.kind !== "npc" || ent.dead) continue;
+            if (ent.hp < ent.hpMax) {
+              ent.hp = Math.min(ent.hpMax, ent.hp + 3 * dt);
+              if (ent.hpBar) paintHp(ent.hpBar, ent.hp, ent.hpMax, false);
+            }
+          }
+        }
+
+        for (let i = bursts.length - 1; i >= 0; i--) {
+          const b = bursts[i];
+          b.t += dt;
+          const u = b.t / b.life;
+          const s = 0.35 + u * 2.4;
+          b.spr.scale.set(s, s, 1);
+          b.spr.material.opacity = 1 - u;
+          b.spr.material.rotation = u * 1.2;
+          if (u >= 1) {
+            scene.remove(b.spr);
+            bursts.splice(i, 1);
+          }
+        }
+
+        for (const ent of ents) animateEnt(ent, dt);
+
+        look.x += (player.x - look.x) * Math.min(1, 5.5 * dt);
+        look.z += (player.z - look.z) * Math.min(1, 5.5 * dt);
+        look.y = 0.85;
+        const dist = 10.4;
+        const height = 9.3;
+        camera.position.set(look.x + Math.sin(yaw) * dist, height, look.z + Math.cos(yaw) * dist);
+        camera.lookAt(look);
+        lamp.position.set(player.x, 4.2, player.z);
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(frame);
+      }
+
+      document.getElementById("load").classList.add("hide");
+      requestAnimationFrame((t) => { last = t; frame(t); });
+    }
+
+    boot().catch((err) => {
+      document.getElementById("load").textContent = "插片加载失败";
+      console.error(err);
+    });
+  })();
+  </script>
+</body>
+</html>
