@@ -1,0 +1,2222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>咒链 · 沃玛森林</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:#eee;user-select:none}
+  canvas{display:block}
+  body.playing,body.playing canvas{cursor:none}
+  #vignette{position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,0) 60%,rgba(0,0,0,.5) 100%)}
+  #hurt{position:fixed;inset:0;pointer-events:none;opacity:0;
+    background:radial-gradient(ellipse at center,rgba(120,0,0,0) 40%,rgba(170,0,0,.75) 100%)}
+  #dmg,#bars{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .floater{position:absolute;left:0;top:0;font-weight:900;font-size:19px;color:#ffe6a0;white-space:nowrap;
+    text-shadow:0 0 3px #000,0 2px 2px #000,0 0 8px rgba(0,0,0,.6)}
+  .floater.fire{color:#ffa040}.floater.ice{color:#9fe4ff}.floater.bolt{color:#c9b4ff}.floater.arcane{color:#ff8aea}
+  .floater.crit{font-size:27px}
+  .floater.dot{font-size:13px;opacity:.85}
+  .floater.ph{color:#ff3434;font-size:22px}
+  .floater.miss{color:#9fdcff;font-size:16px}
+  .floater.info{color:#ffe08a;font-size:15px}
+  .floater.react{font-size:30px;letter-spacing:2px;text-shadow:0 0 4px #000,0 0 14px currentColor}
+  .ebar{position:absolute;left:0;top:0;width:66px}
+  .ebar .nm{font-size:11px;text-align:center;color:#f2f2f2;text-shadow:0 1px 2px #000,0 0 3px #000;margin-bottom:2px;white-space:nowrap}
+  .ebar .bg{height:5px;background:#2a0505;border:1px solid #000;position:relative}
+  .ebar .fg{height:100%;width:100%;background:linear-gradient(#ff5a45,#a8120b)}
+  .ebar .stt{font-size:11px;text-align:center;font-weight:bold;height:13px;text-shadow:0 1px 2px #000;white-space:nowrap}
+  .ebar.elite{width:90px}.ebar.elite .nm{color:#8fb8ff;font-weight:bold}
+  .ebar.boss{width:140px}.ebar.boss .nm{color:#ffd24a;font-size:14px;font-weight:bold}
+  .ebar.boss .bg{height:8px}
+  .lootlbl{position:absolute;left:0;top:0;font-size:12px;padding:1px 6px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);white-space:nowrap}
+
+  #cursor{position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:5}
+  #cursor i{position:absolute;border:2px solid rgba(255,240,200,.9);border-radius:50%;width:22px;height:22px;left:-11px;top:-11px;box-shadow:0 0 3px #000}
+  #cursor b{position:absolute;width:4px;height:4px;left:-2px;top:-2px;border-radius:50%;background:#fff;box-shadow:0 0 2px #000}
+  #cursor.hot i{border-color:#ff5a3a;width:28px;height:28px;left:-14px;top:-14px}
+  #cursor.hit i{border-color:#fff;transform:scale(1.25)}
+  body:not(.playing) #cursor{display:none}
+
+  #target{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:320px;text-align:center;opacity:0;transition:opacity .12s;pointer-events:none}
+  #target .tn{font-size:16px;color:#ffe6a8;text-shadow:0 1px 3px #000;margin-bottom:4px}
+  #target .tb{height:10px;border:1px solid #6b5326;background:#1c0606}
+  #target .tf{height:100%;background:linear-gradient(#ff5b44,#9c0f08)}
+  #target .th{font-size:12px;color:#ddd;margin-top:3px;text-shadow:0 1px 2px #000}
+  #kills{position:fixed;top:14px;right:20px;font-size:14px;color:#e8d6a6;text-shadow:0 1px 3px #000;text-align:right;line-height:1.6}
+  #kills b{font-size:24px;color:#ffcf4a;margin-left:6px}
+  #kills .dg{color:#ff8a5a}
+  #help{position:fixed;top:14px;left:16px;font-size:12px;line-height:1.75;color:#d8d0bc;text-shadow:0 1px 2px #000;
+    background:rgba(20,14,8,.5);padding:8px 12px;border:1px solid rgba(201,162,60,.35);max-width:300px}
+  #help b{color:#ffcf6a;font-weight:normal}
+  #help .rx{margin-top:4px;border-top:1px solid rgba(201,162,60,.3);padding-top:4px}
+  #help .rx span{display:block}
+  #banner{position:fixed;top:22%;left:0;right:0;text-align:center;font-size:42px;font-weight:900;letter-spacing:8px;
+    color:#ffdf8a;text-shadow:0 0 12px #000,0 3px 4px #000,0 0 30px rgba(255,120,30,.5);opacity:0;pointer-events:none;transition:opacity .5s}
+  #banner small{display:block;font-size:16px;letter-spacing:4px;color:#d6c9a8;margin-top:8px}
+  #log{position:fixed;right:18px;bottom:130px;width:280px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  #log div{font-size:13px;background:rgba(0,0,0,.55);padding:3px 10px;border-right:3px solid currentColor;transition:opacity .6s;text-shadow:0 1px 2px #000}
+
+  #bottom{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:12px;pointer-events:none}
+  .orb{position:relative;width:92px;height:92px;border-radius:50%;overflow:hidden;flex:none;
+    border:3px solid #b8903a;box-shadow:0 0 0 2px #2a1c0c,0 0 14px rgba(0,0,0,.8),inset 0 0 18px rgba(0,0,0,.8);background:#120a06}
+  .orb .fill{position:absolute;left:0;right:0;bottom:0;height:100%;background:radial-gradient(circle at 35% 30%,#ff7a6a,#c4140c 45%,#5a0402)}
+  .orb span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;text-shadow:0 1px 2px #000,0 0 4px #000}
+  .orb::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 25%,rgba(255,255,255,.35),rgba(255,255,255,0) 35%)}
+  .sbars{display:flex;flex-direction:column;gap:6px}
+  .sb{width:430px;border:2px solid #8a6a2a;border-radius:4px;background:linear-gradient(#3a2a18ee,#1c130aee);padding:5px 8px;box-shadow:0 0 0 2px #1a1008,0 0 12px rgba(0,0,0,.7)}
+  .sbh{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+  .sbh .k{color:#2a1a06;background:#d8b25a;padding:0 5px;border-radius:2px;margin-right:6px;font-weight:bold}
+  .sbh .info{color:#bba882}
+  .sb .slots{display:flex;gap:3px;min-height:30px}
+  .sb .bars{display:flex;gap:6px;margin-top:4px;align-items:center}
+  .sb .mana{flex:1;height:7px;background:#06103a;border:1px solid #000}
+  .sb .mana i{display:block;height:100%;background:linear-gradient(#6ab0ff,#1a48c4)}
+  .sb .rl{width:90px;height:7px;background:#1a1408;border:1px solid #000}
+  .sb .rl i{display:block;height:100%;width:0;background:#e8c060}
+  .sb .rl.reload i{background:#ff7a3a}
+  .sb .mtxt{font-size:10px;color:#9fc4ff;width:56px;text-align:right}
+  .blinks{display:flex;gap:6px;justify-content:center;font-size:11px;color:#bfe6ff;align-items:center}
+  .blinks i{display:inline-block;width:26px;height:8px;border:1px solid #6ab8ff;background:#0a1a2a;position:relative;overflow:hidden}
+  .blinks i b{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(#bfe8ff,#3a90e0)}
+  .invhint{font-size:12px;color:#ffd77a;text-align:center;text-shadow:0 1px 2px #000}
+
+  /* 法术卡 */
+  .card{position:relative;width:40px;height:52px;border:2px solid var(--rc,#ddd);border-radius:6px;flex:none;
+    background:radial-gradient(circle at 50% 42%,var(--c) 0,rgba(0,0,0,.2) 55%,#120a06 80%);
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;text-shadow:0 0 4px #000,0 0 2px #000;cursor:pointer}
+  .card.mod{border-style:dashed;border-radius:12px}
+  .card.empty{background:rgba(0,0,0,.35);border:2px dashed rgba(255,255,255,.18);cursor:pointer}
+  .card .cost{position:absolute;right:1px;bottom:0;font-size:9px;color:#9fc4ff;font-weight:normal}
+  .card.sm{width:26px;height:30px;font-size:11px;border-width:1px;border-radius:4px;cursor:default}
+  .card.sm.mod{border-radius:8px}
+  .card.sm.next{box-shadow:0 0 0 2px #fff,0 0 10px #fff;transform:translateY(-2px)}
+  .card.sm.used{opacity:.4}
+  .card.sel{box-shadow:0 0 0 3px #fff,0 0 14px #ffd060;transform:translateY(-3px)}
+  .card.always{box-shadow:0 0 0 2px #ff8a2a inset}
+
+  #inv{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:10}
+  .invbox{width:980px;max-height:94vh;overflow:auto;padding:16px 20px;border:2px solid #9a7a32;background:linear-gradient(#2a1e10f4,#140c06f4);box-shadow:0 0 0 3px #1a1008,0 0 40px rgba(0,0,0,.9)}
+  .invtop{display:flex;align-items:baseline;gap:14px;margin-bottom:10px}
+  .invtop b{font-size:22px;color:#ffd77a;letter-spacing:4px}
+  .invtop span{font-size:12px;color:#c8b890;flex:1;line-height:1.6}
+  .invtop .x{flex:none;cursor:pointer;color:#ffd77a;border:1px solid #9a7a32;padding:2px 10px}
+  .eq{border:1px solid #6b5326;background:rgba(0,0,0,.3);padding:8px 10px;margin-bottom:8px}
+  .eqh{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .eqh .k{color:#2a1a06;background:#d8b25a;padding:0 6px;border-radius:2px;font-weight:bold;font-size:12px}
+  .eqh .nm{font-size:16px;font-weight:bold}
+  .eqh .rr{font-size:12px;opacity:.8}
+  .eqh .btn{margin-left:auto}
+  .stats{font-size:12px;color:#c8b890;margin-bottom:6px;line-height:1.6}
+  .stats em{font-style:normal;color:#8fc0ff}
+  .stats .af{color:#8fb8ff}
+  .stats .lg{color:#ff9a4a}
+  .eq .slots{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .eq .slots .arrow{color:#6b5326;font-size:12px}
+  .row2{display:flex;gap:10px}
+  .sbag{width:360px;border:1px solid #6b5326;background:rgba(0,0,0,.3);padding:8px}
+  .cbag{flex:1;border:1px solid #6b5326;background:rgba(0,0,0,.3);padding:8px;min-height:200px}
+  .sbag h3,.cbag h3{margin:0 0 6px;font-size:14px;color:#ffd77a;font-weight:normal}
+  .cbag h3 small,.sbag h3 small{color:#9a8a6a;font-size:11px;margin-left:6px}
+  #cbag{display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;min-height:150px}
+  .sitem{border:1px solid #4a3a1e;padding:5px 7px;margin-bottom:5px;background:rgba(255,255,255,.03)}
+  .sitem .nm{font-size:13px;font-weight:bold}
+  .sitem .ss{font-size:11px;color:#a8987a;line-height:1.5}
+  .sitem .mini{display:flex;gap:2px;margin:3px 0;flex-wrap:wrap}
+  .btn{font:inherit;font-size:11px;padding:2px 8px;cursor:pointer;color:#2a1a06;border:1px solid #ffe3a0;background:linear-gradient(#ffd77a,#c08a28);margin-right:4px}
+  .btn.gray{background:linear-gradient(#a89a80,#6a5a40);border-color:#c8b890}
+  #tip{position:fixed;display:none;pointer-events:none;z-index:20;width:240px;padding:8px 10px;font-size:12px;line-height:1.6;
+    background:rgba(14,10,6,.97);border:1px solid #9a7a32;color:#d6cbb0}
+  #tip .tn{font-size:15px;font-weight:bold}
+  #tip .tt{color:#9a8a6a}
+  #tip .tv{color:#8fc0ff}
+
+  #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:15;
+    background:radial-gradient(ellipse at center,rgba(10,20,12,.6),rgba(0,0,0,.9))}
+  .panel{width:640px;padding:28px 38px;text-align:center;border:2px solid #9a7a32;
+    background:linear-gradient(#2a1e10ee,#140c06ee);box-shadow:0 0 0 3px #1a1008,0 0 40px rgba(0,0,0,.9)}
+  .panel h1{margin:0;font-size:46px;letter-spacing:12px;color:#ffd77a;text-shadow:0 0 18px rgba(255,140,40,.5),0 3px 3px #000}
+  .panel h2{margin:6px 0 16px;font-size:15px;font-weight:normal;letter-spacing:4px;color:#cdbf9c}
+  .panel p{font-size:13px;line-height:1.95;color:#d6cbb0;margin:0 0 16px;text-align:left}
+  .panel p b{color:#ffcf6a;font-weight:normal}
+  .panel button{font:inherit;font-size:18px;letter-spacing:6px;padding:10px 40px;cursor:pointer;color:#2a1a06;
+    border:2px solid #ffe3a0;background:linear-gradient(#ffd77a,#c08a28);box-shadow:0 0 14px rgba(255,180,60,.4)}
+  .panel button:disabled{opacity:.5;cursor:wait}
+  #loadmsg{margin-top:14px;font-size:12px;color:#ff9a7a;min-height:16px}
+  #death{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
+    background:rgba(40,0,0,.45);font-size:46px;letter-spacing:10px;color:#ff6a5a;text-shadow:0 0 14px #000;pointer-events:none}
+  #death small{font-size:16px;letter-spacing:4px;color:#eee;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<div id="hurt"></div>
+<div id="bars"></div>
+<div id="dmg"></div>
+<div id="cursor"><i></i><b></b></div>
+<div id="target"><div class="tn"></div><div class="tb"><div class="tf"></div></div><div class="th"></div></div>
+<div id="kills">击杀<b>0</b><br><span class="dg">危险度 1</span></div>
+<div id="help"><b>WASD</b> 移动　<b>鼠标</b> 瞄准　<b>空格</b> 闪现<br>
+  <b>左键</b> 主杖施法　<b>右键</b> 副杖施法<br>
+  <b>Tab</b> 法杖工坊（编排法术卡）　<b>滚轮</b> 缩放　<b>Esc</b> 暂停
+  <div class="rx">
+    <span style="color:#ffffff">冻结 + 火 = <b style="color:#fff">蒸汽爆炸</b>（范围）</span>
+    <span style="color:#9fe4ff">冻结 + 其他 = <b style="color:#bff">碎冰</b>（×2.5）</span>
+    <span style="color:#ffb070">燃烧 + 雷 = <b style="color:#ffb070">超载</b>（范围击退）</span>
+    <span style="color:#c9b4ff">感电 + 冰 = <b style="color:#c9b4ff">超导</b>（冰寒扩散）</span>
+  </div></div>
+<div id="banner"></div>
+<div id="log"></div>
+<div id="bottom">
+  <div class="orb hp"><div class="fill"></div><span>240/240</span></div>
+  <div class="sbars">
+    <div class="sb" id="sb0"><div class="sbh"><span><span class="k">左键</span><span class="nm"></span></span><span class="info"></span></div><div class="slots"></div><div class="bars"><div class="mana"><i></i></div><span class="mtxt"></span><div class="rl"><i></i></div></div></div>
+    <div class="sb" id="sb1"><div class="sbh"><span><span class="k">右键</span><span class="nm"></span></span><span class="info"></span></div><div class="slots"></div><div class="bars"><div class="mana"><i></i></div><span class="mtxt"></span><div class="rl"><i></i></div></div></div>
+    <div class="blinks">闪现 <i><b></b></i><i><b></b></i>　<span class="invhint" id="invhint">Tab · 法杖工坊</span></div>
+  </div>
+</div>
+<div id="inv"><div class="invbox">
+  <div class="invtop"><b>法杖工坊</b><span>法杖每次施法从左往右读取法术卡：<b style="color:#ffd77a">修饰卡</b>（虚线框）作用于其后的那张法术；<b style="color:#ffd77a">双重/三重施法</b>把后面几张一起打出；<b style="color:#ffd77a">载荷</b>让下一枚法术命中时从命中点释放再后面的法术。读到末尾进入充能。<br>点击/拖拽卡牌到槽位交换；右键槽位卸下。</span><span class="x" data-act="close">Tab 关闭</span></div>
+  <div class="eq" id="eq0"></div>
+  <div class="eq" id="eq1"></div>
+  <div class="row2">
+    <div class="sbag"><h3>法杖背包<small>拆解可取下杖上的法术卡</small></h3><div id="sbag"></div></div>
+    <div class="cbag" data-act="bagzone"><h3>法术卡<small>点击选中，再点击槽位放入</small></h3><div id="cbag"></div></div>
+  </div>
+</div></div>
+<div id="tip"></div>
+<div id="death">你已阵亡<small>按 R 复活</small></div>
+<div id="overlay"><div class="panel">
+  <h1>咒　链</h1>
+  <h2>沃玛森林 · 法杖构筑战斗原型</h2>
+  <p>法师的力量不在技能栏，而在<b>法杖</b>上。每根法杖都有若干<b>法术卡槽</b>，施法时按顺序读取：
+  把 <b>双重施法 → 冰锥 → 冰锥</b> 放在一起就是散射冰锥；把 <b>载荷 → 火花弹 → 火球</b> 连起来，火花弹命中时会在命中点再炸一个火球。<br>
+  <b>元素反应</b>是伤害核心：先用冰把敌人<b>冻结</b>，再用火球打出<b>蒸汽爆炸</b>；先点燃，再用雷弧引爆<b>超载</b>。<br>
+  敌人掉落新的<b>法术卡</b>和<b>随机词缀法杖</b>，按 <b>Tab</b> 打开工坊随时改装。<br>
+  <b>WASD</b> 移动　<b>鼠标</b> 瞄准　<b>左键 / 右键</b> 两根法杖　<b>空格</b> 闪现（2 次充能、无敌）<br>
+  红色地面提示是敌人的攻击范围：走出去，或者把冲锋的半兽战士引去撞树。</p>
+  <button id="startBtn" disabled>加载中…</button>
+  <div id="loadmsg"></div>
+</div></div>
+
+<script>
+  setTimeout(function(){ if(!window.__gameReady){ var m=document.getElementById('loadmsg');
+    if(m) m.innerHTML='three.js 加载失败：请用 start.command 启动（lib/ 已内置 three.module.js），或联网访问 CDN。'; } }, 10000);
+</script>
+
+<script type="module">
+// ============ 加载 three.js（多个源依次尝试） ============
+let THREE = null;
+const SOURCES = [
+  './lib/three.module.js',
+  'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js',
+  'https://unpkg.com/three@0.170.0/build/three.module.js',
+  'https://registry.npmmirror.com/three/0.170.0/files/build/three.module.js',
+];
+for (const url of SOURCES) { try { THREE = await import(url); break; } catch (e) { /* 下一个 */ } }
+if (!THREE) throw new Error('three.js load failed');
+window.__gameReady = true;
+
+// ============ 工具 ============
+const TAU = Math.PI * 2;
+const $ = id => document.getElementById(id);
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const damp = (a, b, k, dt) => lerp(a, b, 1 - Math.exp(-k * dt));
+const wrapAngle = a => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; };
+const dampAngle = (a, b, k, dt) => a + wrapAngle(b - a) * (1 - Math.exp(-k * dt));
+const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+function H(x, z) { // 地形高度
+  return 0.9 * Math.sin(x * 0.05) * Math.cos(z * 0.045) + 0.45 * Math.sin(x * 0.13 + z * 0.08) + 0.25 * Math.cos(z * 0.17 - x * 0.05);
+}
+const pathZ = x => Math.sin(x * 0.04) * 14;
+const WORLD_R = 92;
+const RUINS = { x: 26, z: -30 };
+// 森林入口：世界西侧小路起点，面朝小路深处
+const START = { x: -80, z: pathZ(-80) };
+const START_YAW = Math.atan2(1, Math.cos(-80 * 0.04) * 0.56);
+const START_SAFE = 26; // 开局/刷怪与玩家的最小距离
+
+// ============ 渲染器 / 场景 ============
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.autoClear = false;
+document.body.prepend(renderer.domElement);
+const canvas = renderer.domElement;
+
+const scene = new THREE.Scene();
+const FOG = 0x22352a;
+scene.background = new THREE.Color(FOG);
+scene.fog = new THREE.FogExp2(FOG, 0.013);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 300);
+
+// 俯视镜头下，玩家/光标与镜头之间的树冠做抖动镂空，避免遮挡
+const occU = { uPly: { value: new THREE.Vector3() }, uCamP: { value: new THREE.Vector3() }, uAimP: { value: new THREE.Vector3() } };
+function addOcclusionFade(mat) {
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, occU);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOccW;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+        vec4 occW = vec4(transformed, 1.0);
+        #ifdef USE_INSTANCING
+          occW = instanceMatrix * occW;
+        #endif
+        vOccW = (modelMatrix * occW).xyz;`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        uniform vec3 uPly; uniform vec3 uCamP; uniform vec3 uAimP; varying vec3 vOccW;
+        float occCut(vec3 a, float rad) {
+          vec3 sg = uCamP - a; float L = length(sg); vec3 sd = sg / L;
+          float t = clamp(dot(vOccW - a, sd), 0.0, L);
+          float dd = length(vOccW - (a + sd * t));
+          return t > 1.0 ? smoothstep(rad, rad * 0.45, dd) : 0.0;
+        }`)
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        {
+          float cut = max(occCut(uPly, 4.2), occCut(uAimP, 2.6) * 0.85);
+          cut = max(cut, smoothstep(17.0, 12.0, length(vOccW - uCamP)) * 0.8);
+          float n = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+          if (n < cut * 0.93) discard;
+        }`);
+  };
+  return mat;
+}
+
+scene.add(new THREE.HemisphereLight(0xa8d4a4, 0x2a2214, 1.15));
+const sun = new THREE.DirectionalLight(0xffdcae, 2.3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 130 });
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+const SUN_OFF = V3(-30, 48, -18);
+
+function makeGlowTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.22, 'rgba(255,255,255,.65)');
+  gr.addColorStop(0.55, 'rgba(255,255,255,.15)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const GLOW = makeGlowTex();
+const glowMat = color => new THREE.SpriteMaterial({ map: GLOW, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+
+// ============ 魔法团（噪声扰动的不规则能量体） ============
+const NOISE_GLSL = `
+vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}
+vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
+float snoise(vec3 v){
+  const vec2 C=vec2(1.0/6.0,1.0/3.0); const vec4 D=vec4(0.0,0.5,1.0,2.0);
+  vec3 i=floor(v+dot(v,C.yyy)); vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz); vec3 l=1.0-g; vec3 i1=min(g.xyz,l.zxy); vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx; vec3 x2=x0-i2+C.yyy; vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));
+  float n_=0.142857142857; vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.0*floor(p*ns.z*ns.z);
+  vec4 x_=floor(j*ns.z); vec4 y_=floor(j-7.0*x_);
+  vec4 x=x_*ns.x+ns.yyyy; vec4 y=y_*ns.x+ns.yyyy; vec4 h=1.0-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy); vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.0+1.0; vec4 s1=floor(b1)*2.0+1.0; vec4 sh=-step(h,vec4(0.0));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy; vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x); vec3 p1=vec3(a0.zw,h.y); vec3 p2=vec3(a1.xy,h.z); vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x; p1*=norm.y; p2*=norm.z; p3*=norm.w;
+  vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0); m=m*m;
+  return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}`;
+const BLOB_V = NOISE_GLSL + `
+uniform float uTime, uAmp, uFreq; varying vec3 vN; varying vec3 vV; varying float vNoise;
+void main(){
+  vec3 p = position;
+  float n = snoise(p*uFreq + vec3(uTime*1.3, uTime*0.9, -uTime*1.1));
+  float n2 = snoise(p*uFreq*2.2 - vec3(uTime*1.7)) * 0.5;
+  float d = (n + n2) * uAmp; vNoise = d;
+  p += normal * d;
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
+  gl_Position = projectionMatrix * mv;
+}`;
+const BLOB_F = `
+uniform vec3 uCore, uEdge; uniform float uAlpha; varying vec3 vN; varying vec3 vV; varying float vNoise;
+void main(){
+  float f = 1.0 - abs(dot(vN, vV));
+  vec3 col = mix(uCore, uEdge, smoothstep(0.0, 0.85, f));
+  float a = (0.22 + pow(f, 1.6) * 1.2 + vNoise * 0.9) * uAlpha;
+  gl_FragColor = vec4(col * (1.0 + max(vNoise, 0.0) * 2.2), clamp(a, 0.0, 1.0));
+}`;
+const blobGeo = new THREE.IcosahedronGeometry(1, 4);
+const BLOB_COL = {
+  fire: { core: [1, 0.92, 0.55], edge: [1, 0.28, 0.02], inner: [1, 1, 0.85], glow: 0xff6a18 },
+  ice:  { core: [0.88, 0.98, 1], edge: [0.12, 0.45, 1], inner: [1, 1, 1], glow: 0x3aa8ff },
+  jade: { core: [0.8, 1, 0.85], edge: [0.08, 0.9, 0.45], inner: [1, 1, 1], glow: 0x3dffa0 },
+  bolt: { core: [0.92, 0.9, 1], edge: [0.45, 0.25, 1], inner: [1, 1, 1], glow: 0x9a7aff },
+  arcane: { core: [1, 0.8, 1], edge: [0.8, 0.1, 0.9], inner: [1, 1, 1], glow: 0xff4ae0 },
+  poison: { core: [0.8, 1, 0.4], edge: [0.25, 0.6, 0.02], inner: [1, 1, 0.8], glow: 0x8aff30 },
+};
+function blobMat(amp, freq, alpha) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: Math.random() * 20 }, uAmp: { value: amp }, uFreq: { value: freq },
+      uCore: { value: new THREE.Color() }, uEdge: { value: new THREE.Color() }, uAlpha: { value: alpha } },
+    vertexShader: BLOB_V, fragmentShader: BLOB_F, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+}
+function makeBlob(kind) {
+  const g = new THREE.Group();
+  const glow = new THREE.Sprite(glowMat(0xffffff)); glow.scale.setScalar(3.4);
+  const outer = new THREE.Mesh(blobGeo, blobMat(0.42, 1.5, 0.7));
+  const inner = new THREE.Mesh(blobGeo, blobMat(0.28, 2.4, 0.95)); inner.scale.setScalar(0.5);
+  outer.renderOrder = inner.renderOrder = glow.renderOrder = 6;
+  g.add(glow, outer, inner);
+  const b = {
+    g, glow, outer, inner, kind: null,
+    setKind(k) {
+      if (k === b.kind) return; b.kind = k; const C = BLOB_COL[k];
+      outer.material.uniforms.uCore.value.setRGB(...C.core); outer.material.uniforms.uEdge.value.setRGB(...C.edge);
+      inner.material.uniforms.uCore.value.setRGB(...C.inner); inner.material.uniforms.uEdge.value.setRGB(...C.core);
+      glow.material.color.setHex(C.glow);
+    },
+    update(dt, speed = 1) {
+      outer.material.uniforms.uTime.value += dt * speed; inner.material.uniforms.uTime.value += dt * speed * 1.7;
+      outer.rotation.y += dt * 2.2 * speed; outer.rotation.x += dt * 0.9 * speed; inner.rotation.x -= dt * 3.1 * speed;
+    },
+    dispose() { outer.material.dispose(); inner.material.dispose(); glow.material.dispose(); },
+  };
+  b.setKind(kind);
+  return b;
+}
+
+const std = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.8, metalness: 0 }, o));
+function mesh(geo, mat, parent, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true;
+  if (parent) parent.add(m); return m;
+}
+
+// ============ 世界：沃玛森林 ============
+const colliders = []; // {x,z,r,h,base}
+function addCollider(x, z, r, h) { colliders.push({ x, z, r, h, base: H(x, z) }); }
+
+{ // 地面
+  const size = 230, seg = 190;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+  const c = new THREE.Color(), cA = new THREE.Color(0x2c4522), cB = new THREE.Color(0x48632c),
+        cDirt = new THREE.Color(0x5e4a32), cMoss = new THREE.Color(0x2f5a3c), cStone = new THREE.Color(0x56584c);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    pos.setY(i, H(x, z));
+    const n = 0.5 + 0.5 * Math.sin(x * 0.31 + Math.sin(z * 0.23) * 2) * Math.cos(z * 0.27 + x * 0.11);
+    c.copy(cA).lerp(cB, n);
+    const pd = Math.abs(z - pathZ(x));
+    const w = clamp(1 - (pd - 1.2) / 2.8, 0, 1);
+    c.lerp(cDirt, w * (0.75 + 0.2 * Math.random()));
+    c.lerp(cMoss, Math.random() * 0.18);
+    const rd = Math.hypot(x - RUINS.x, z - RUINS.z);
+    if (rd < 9) c.lerp(cStone, clamp((9 - rd) / 4, 0, 0.8) * (0.6 + 0.4 * Math.random()));
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+  ground.receiveShadow = true; scene.add(ground);
+}
+
+const dummy = new THREE.Object3D();
+{ // 树
+  const trees = [];
+  let tries = 0;
+  while (trees.length < 175 && tries++ < 8000) {
+    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * WORLD_R;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - START.x, z - START.z) < 11 || Math.abs(z - pathZ(x)) < 4.5 || Math.hypot(x - RUINS.x, z - RUINS.z) < 12) continue;
+    if (trees.some(t => (t.x - x) ** 2 + (t.z - z) ** 2 < 17)) continue;
+    trees.push({ x, z, s: rand(0.8, 1.6), coll: true });
+  }
+  for (let i = 0; i < 110; i++) { // 外围密林作为边界
+    const a = Math.random() * TAU, r = rand(WORLD_R + 3, WORLD_R + 16);
+    trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, s: rand(1.1, 1.9), coll: false });
+  }
+  const trunkGeo = new THREE.CylinderGeometry(0.22, 0.4, 4.2, 7); trunkGeo.translate(0, 2.1, 0);
+  const cg = [
+    (() => { const g = new THREE.ConeGeometry(2.4, 3.2, 8); g.translate(0, 4.4, 0); return g; })(),
+    (() => { const g = new THREE.ConeGeometry(1.8, 2.8, 8); g.translate(0, 5.9, 0); return g; })(),
+    (() => { const g = new THREE.ConeGeometry(1.1, 2.4, 8); g.translate(0, 7.3, 0); return g; })(),
+  ];
+  const n = trees.length;
+  const trunks = new THREE.InstancedMesh(trunkGeo, addOcclusionFade(std(0x3a2a1c, { roughness: 1 })), n);
+  trunks.castShadow = true; trunks.receiveShadow = true; scene.add(trunks);
+  const canMat = addOcclusionFade(std(0xffffff, { roughness: 0.9, flatShading: true }));
+  const cans = cg.map(g => { const m = new THREE.InstancedMesh(g, canMat, n); m.castShadow = true; m.receiveShadow = true; scene.add(m); return m; });
+  const col = new THREE.Color();
+  trees.forEach((t, i) => {
+    dummy.position.set(t.x, H(t.x, t.z) - 0.15, t.z);
+    dummy.rotation.set(rand(-0.05, 0.05), Math.random() * TAU, rand(-0.05, 0.05));
+    dummy.scale.set(t.s, t.s * rand(0.9, 1.25), t.s);
+    dummy.updateMatrix();
+    trunks.setMatrixAt(i, dummy.matrix);
+    const hue = rand(0.25, 0.4), l = rand(0.13, 0.22);
+    cans.forEach((m, k) => { m.setMatrixAt(i, dummy.matrix); col.setHSL(hue + k * 0.01, rand(0.35, 0.55), l + k * 0.025); m.setColorAt(i, col); });
+    if (t.coll) addCollider(t.x, t.z, 0.45 * t.s, 4.0 * t.s);
+  });
+}
+
+{ // 岩石
+  const geo = new THREE.DodecahedronGeometry(1, 0);
+  const n = 55, rocks = new THREE.InstancedMesh(geo, std(0x5d6156, { flatShading: true, roughness: 1 }), n);
+  rocks.castShadow = true; rocks.receiveShadow = true; scene.add(rocks);
+  for (let i = 0; i < n; i++) {
+    let x, z, ok = false, tries = 0;
+    while (!ok && tries++ < 50) {
+      const a = Math.random() * TAU, r = rand(10, WORLD_R);
+      x = Math.cos(a) * r; z = Math.sin(a) * r;
+      ok = Math.abs(z - pathZ(x)) > 3.5 && !colliders.some(c => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 2) ** 2);
+    }
+    const s = rand(0.5, 1.7);
+    dummy.position.set(x, H(x, z) + s * 0.15, z);
+    dummy.rotation.set(Math.random(), Math.random() * TAU, Math.random());
+    dummy.scale.set(s * rand(1, 1.4), s * rand(0.5, 0.8), s * rand(1, 1.3));
+    dummy.updateMatrix(); rocks.setMatrixAt(i, dummy.matrix);
+    if (s > 0.8) addCollider(x, z, s * 0.95, s * 0.9);
+  }
+}
+
+{ // 发光蘑菇（沃玛森林的诡异氛围）
+  const n = 90;
+  const stemGeo = new THREE.CylinderGeometry(0.05, 0.08, 0.32, 6); stemGeo.translate(0, 0.16, 0);
+  const capGeo = new THREE.SphereGeometry(0.2, 8, 5, 0, TAU, 0, Math.PI / 2); capGeo.translate(0, 0.3, 0);
+  const stems = new THREE.InstancedMesh(stemGeo, std(0xd9d2b8), n);
+  const caps = new THREE.InstancedMesh(capGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), n);
+  scene.add(stems, caps);
+  const col = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const cx = rand(-WORLD_R, WORLD_R), cz = rand(-WORLD_R, WORLD_R);
+    const x = cx + rand(-1, 1), z = cz + rand(-1, 1), s = rand(0.6, 1.8);
+    dummy.position.set(x, H(x, z), z); dummy.rotation.set(rand(-.2, .2), 0, rand(-.2, .2)); dummy.scale.setScalar(s);
+    dummy.updateMatrix(); stems.setMatrixAt(i, dummy.matrix); caps.setMatrixAt(i, dummy.matrix);
+    col.setHSL(Math.random() < 0.6 ? rand(0.45, 0.52) : rand(0.75, 0.82), 0.9, 0.55); caps.setColorAt(i, col);
+  }
+}
+
+{ // 草
+  const geo = new THREE.ConeGeometry(0.06, 0.7, 3); geo.translate(0, 0.35, 0);
+  const n = 6000, grass = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff }), n);
+  const col = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * (WORLD_R + 8);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const onPath = Math.abs(z - pathZ(x)) < 2.2;
+    const s = onPath ? rand(0.2, 0.45) : rand(0.5, 1.4);
+    dummy.position.set(x, H(x, z) - 0.05, z); dummy.rotation.set(rand(-.3, .3), Math.random() * TAU, rand(-.3, .3));
+    dummy.scale.set(s, s * rand(0.7, 1.4), s); dummy.updateMatrix(); grass.setMatrixAt(i, dummy.matrix);
+    col.setHSL(rand(0.22, 0.32), rand(0.4, 0.6), rand(0.16, 0.3)); grass.setColorAt(i, col);
+  }
+  scene.add(grass);
+}
+
+{ // 森林入口牌坊
+  const wood = std(0x4a3220, { roughness: 1 }), stone = std(0x6c6a5c, { roughness: 1, flatShading: true });
+  const gx = START.x + 6, gz = pathZ(gx);
+  const gate = new THREE.Group(); gate.position.set(gx, 0, gz); gate.rotation.y = START_YAW; scene.add(gate);
+  for (const s of [1, -1]) {
+    const px = gx + Math.cos(START_YAW) * s * 3.4, pz = gz - Math.sin(START_YAW) * s * 3.4;
+    const by = H(px, pz);
+    mesh(new THREE.BoxGeometry(1.1, 0.8, 1.1), stone, gate, s * 3.4, by + 0.3, 0);
+    mesh(new THREE.CylinderGeometry(0.26, 0.32, 5.2, 8), wood, gate, s * 3.4, by + 2.6, 0);
+    addCollider(px, pz, 0.6, 5);
+  }
+  const top = H(gx, gz) + 5.1;
+  mesh(new THREE.BoxGeometry(8.6, 0.38, 0.5), wood, gate, 0, top, 0);
+  mesh(new THREE.BoxGeometry(7.8, 0.22, 0.4), wood, gate, 0, top - 0.7, 0);
+  // 牌匾
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160;
+  const g = c.getContext('2d');
+  g.fillStyle = '#2a1a0e'; g.fillRect(0, 0, 512, 160);
+  g.strokeStyle = '#c9a23c'; g.lineWidth = 10; g.strokeRect(8, 8, 496, 144);
+  g.fillStyle = '#f0c860'; g.font = 'bold 96px "PingFang SC","Microsoft YaHei",serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('沃玛森林', 256, 84);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.94), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, side: THREE.DoubleSide }));
+  plaque.position.set(0, top - 0.35, -0.27); plaque.rotation.y = Math.PI; gate.add(plaque);
+  const plaque2 = plaque.clone(); plaque2.position.z = 0.27; plaque2.rotation.y = 0; gate.add(plaque2);
+  // 两侧火把
+  for (const s of [1, -1]) {
+    const sp = new THREE.Sprite(glowMat(0xff9a40)); sp.scale.setScalar(1.6); sp.position.set(s * 3.4, H(gx, gz) + 5.6, 0); gate.add(sp);
+  }
+}
+
+{ // 沃玛寺庙废墟
+  const stone = std(0x6c6a5c, { roughness: 1, flatShading: true });
+  const moss = std(0x3d5a30, { roughness: 1 });
+  const by = H(RUINS.x, RUINS.z);
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * TAU, x = RUINS.x + Math.cos(a) * 7.5, z = RUINS.z + Math.sin(a) * 7.5;
+    const h = i % 3 === 1 ? rand(1.2, 2) : rand(3, 5.2);
+    const p = mesh(new THREE.BoxGeometry(1.1, h, 1.1), stone, scene, x, H(x, z) + h / 2 - 0.1, z);
+    p.rotation.set(rand(-.06, .06), a, rand(-.06, .06));
+    mesh(new THREE.BoxGeometry(1.15, 0.3, 1.15), moss, p, 0, -h / 2 + 0.3, 0);
+    if (h > 3) mesh(new THREE.BoxGeometry(1.5, 0.4, 1.5), stone, p, 0, h / 2 + 0.2, 0);
+    addCollider(x, z, 0.85, h);
+  }
+  const altar = mesh(new THREE.CylinderGeometry(2.1, 2.5, 0.7, 8), stone, scene, RUINS.x, by + 0.2, RUINS.z);
+  mesh(new THREE.CylinderGeometry(0.7, 0.9, 1.6, 6), stone, altar, 0, 1.1, 0);
+  const rune = new THREE.Mesh(new THREE.RingGeometry(2.6, 3.0, 48),
+    new THREE.MeshBasicMaterial({ color: 0x3aff9a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  rune.rotation.x = -Math.PI / 2; rune.position.set(RUINS.x, by + 0.12, RUINS.z); scene.add(rune);
+  const orbG = new THREE.Sprite(glowMat(0x48ff9c)); orbG.scale.setScalar(2.6); orbG.position.set(RUINS.x, by + 2.6, RUINS.z); scene.add(orbG);
+  addCollider(RUINS.x, RUINS.z, 2.4, 2.5);
+  window.__rune = { rune, orbG };
+}
+
+// ============ 粒子系统 ============
+const PV = `attribute vec4 pcolor; attribute float psize; uniform float uScale; varying vec4 vC;
+void main(){ vC=pcolor; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=psize*uScale/max(-mv.z,0.1); gl_Position=projectionMatrix*mv; }`;
+const PF = `varying vec4 vC;
+void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c)*2.0; if(d>1.0) discard; float a=pow(1.0-d,1.5); gl_FragColor=vec4(vC.rgb, vC.a*a); }`;
+class Particles {
+  constructor(max, blending) {
+    this.max = max; this.n = 0;
+    const F = k => new Float32Array(max * k);
+    Object.assign(this, { pos: F(3), col: F(4), size: F(1), vel: F(3), life: F(1), maxLife: F(1), s0: F(1), s1: F(1), c0: F(3), c1: F(3), grav: F(1), drag: F(1), a0: F(1) });
+    const g = new THREE.BufferGeometry();
+    this.aPos = new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage);
+    this.aCol = new THREE.BufferAttribute(this.col, 4).setUsage(THREE.DynamicDrawUsage);
+    this.aSize = new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute('position', this.aPos); g.setAttribute('pcolor', this.aCol); g.setAttribute('psize', this.aSize);
+    g.setDrawRange(0, 0);
+    this.mat = new THREE.ShaderMaterial({ uniforms: { uScale: { value: 500 } }, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending });
+    this.points = new THREE.Points(g, this.mat); this.points.frustumCulled = false; this.points.renderOrder = 5;
+    this.geo = g; scene.add(this.points);
+  }
+  emit(x, y, z, vx, vy, vz, life, s0, s1, c0, c1, grav = 0, drag = 0, alpha = 1) {
+    if (this.n >= this.max) return;
+    const i = this.n++, i3 = i * 3;
+    this.pos[i3] = x; this.pos[i3 + 1] = y; this.pos[i3 + 2] = z;
+    this.vel[i3] = vx; this.vel[i3 + 1] = vy; this.vel[i3 + 2] = vz;
+    this.life[i] = 0; this.maxLife[i] = life; this.s0[i] = s0; this.s1[i] = s1;
+    this.c0[i3] = c0[0]; this.c0[i3 + 1] = c0[1]; this.c0[i3 + 2] = c0[2];
+    this.c1[i3] = c1[0]; this.c1[i3 + 1] = c1[1]; this.c1[i3 + 2] = c1[2];
+    this.grav[i] = grav; this.drag[i] = drag; this.a0[i] = alpha;
+  }
+  kill(i) {
+    const j = --this.n; if (i === j) return;
+    for (const k of ['life', 'maxLife', 's0', 's1', 'grav', 'drag', 'a0', 'size']) this[k][i] = this[k][j];
+    for (const k of ['pos', 'vel', 'c0', 'c1']) { this[k][i * 3] = this[k][j * 3]; this[k][i * 3 + 1] = this[k][j * 3 + 1]; this[k][i * 3 + 2] = this[k][j * 3 + 2]; }
+  }
+  update(dt) {
+    let i = 0;
+    while (i < this.n) {
+      this.life[i] += dt;
+      if (this.life[i] >= this.maxLife[i]) { this.kill(i); continue; }
+      const t = this.life[i] / this.maxLife[i], i3 = i * 3, i4 = i * 4;
+      const dr = Math.exp(-this.drag[i] * dt);
+      this.vel[i3] *= dr; this.vel[i3 + 1] = this.vel[i3 + 1] * dr - this.grav[i] * dt; this.vel[i3 + 2] *= dr;
+      this.pos[i3] += this.vel[i3] * dt; this.pos[i3 + 1] += this.vel[i3 + 1] * dt; this.pos[i3 + 2] += this.vel[i3 + 2] * dt;
+      this.size[i] = lerp(this.s0[i], this.s1[i], t);
+      this.col[i4] = lerp(this.c0[i3], this.c1[i3], t);
+      this.col[i4 + 1] = lerp(this.c0[i3 + 1], this.c1[i3 + 1], t);
+      this.col[i4 + 2] = lerp(this.c0[i3 + 2], this.c1[i3 + 2], t);
+      this.col[i4 + 3] = Math.min(1, t * 10) * (1 - t) * this.a0[i];
+      i++;
+    }
+    this.aPos.needsUpdate = this.aCol.needsUpdate = this.aSize.needsUpdate = true;
+    this.geo.setDrawRange(0, this.n);
+  }
+}
+const fx = new Particles(9000, THREE.AdditiveBlending);
+const dust = new Particles(2000, THREE.NormalBlending);
+const FIRE0 = [1, 0.85, 0.4], FIRE1 = [0.9, 0.18, 0.03], EMB0 = [1, 0.7, 0.25], EMB1 = [1, 0.2, 0.0];
+const BLOOD0 = [0.22, 0.32, 0.08], BLOOD1 = [0.1, 0.14, 0.03];
+function rdir() { const u = rand(-1, 1), a = Math.random() * TAU, s = Math.sqrt(1 - u * u); return [Math.cos(a) * s, u, Math.sin(a) * s]; }
+
+// ============ 光源池（数量固定，避免着色器重编译） ============
+const lights = [];
+for (let i = 0; i < 6; i++) { const l = new THREE.PointLight(0xff7a2a, 0, 13, 2); scene.add(l); lights.push({ l, busy: false }); }
+const grabLight = () => { const e = lights.find(e => !e.busy); if (e) e.busy = true; return e || null; };
+const flashes = []; // {e,t,dur,peak}
+function lightFlash(p, peak, dur, color = 0xff7a2a, e = null) {
+  e = e || grabLight(); if (!e) return;
+  e.l.color.setHex(color); e.l.position.copy(p); flashes.push({ e, t: 0, dur, peak });
+}
+
+// ============ 音效（WebAudio 合成） ============
+let AC = null, noiseBuf = null;
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  } catch (e) { AC = null; }
+}
+const sfxLast = {};
+function sfx(type, vol = 1) {
+  if (!AC || vol <= 0.01) return;
+  const t = AC.currentTime;
+  if (sfxLast[type] !== undefined && t - sfxLast[type] < 0.04) return;
+  sfxLast[type] = t;
+  const out = AC.createGain(); out.connect(AC.destination);
+  const noise = (dur, f0, f1, ftype, g0) => {
+    const s = AC.createBufferSource(); s.buffer = noiseBuf;
+    const f = AC.createBiquadFilter(); f.type = ftype; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = AC.createGain(); g.gain.setValueAtTime(g0 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t + dur);
+  };
+  const tone = (dur, f0, f1, wave, g0) => {
+    const o = AC.createOscillator(); o.type = wave; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = AC.createGain(); g.gain.setValueAtTime(g0 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur);
+  };
+  if (type === 'fire') { noise(0.35, 600, 2800, 'bandpass', 0.35); tone(0.25, 300, 700, 'triangle', 0.08); }
+  else if (type === 'boom') { noise(0.7, 1400, 120, 'lowpass', 0.7); tone(0.5, 130, 38, 'sine', 0.55); }
+  else if (type === 'hurt') { tone(0.22, 220, 90, 'sawtooth', 0.12); noise(0.15, 900, 300, 'lowpass', 0.25); }
+  else if (type === 'swing') { noise(0.22, 300, 1400, 'bandpass', 0.25); }
+  else if (type === 'die') { tone(0.6, 170, 45, 'square', 0.08); noise(0.5, 500, 100, 'lowpass', 0.2); }
+  else if (type === 'roar') { tone(0.7, 110, 70, 'sawtooth', 0.12); noise(0.7, 400, 200, 'lowpass', 0.15); }
+  else if (type === 'dodge') { noise(0.25, 2000, 600, 'highpass', 0.2); }
+  else if (type === 'charge_fire') { tone(0.6, 140, 480, 'sawtooth', 0.045); noise(0.6, 250, 1400, 'bandpass', 0.12); }
+  else if (type === 'charge_ice') { tone(0.6, 500, 1400, 'sine', 0.05); noise(0.6, 2500, 6000, 'highpass', 0.08); }
+  else if (type === 'iceShot') { noise(0.3, 5000, 1500, 'highpass', 0.3); tone(0.25, 1400, 500, 'triangle', 0.08); }
+  else if (type === 'iceBoom') { noise(0.5, 6000, 800, 'highpass', 0.45); tone(0.4, 900, 200, 'sine', 0.15); tone(0.3, 2400, 1800, 'triangle', 0.05); }
+  else if (type === 'empty') { tone(0.12, 400, 200, 'sine', 0.08); }
+  else if (type === 'spark') { noise(0.12, 2600, 900, 'bandpass', 0.16); }
+  else if (type === 'zap') { noise(0.18, 5000, 1500, 'highpass', 0.3); tone(0.14, 900, 260, 'square', 0.05); }
+  else if (type === 'arcane') { tone(0.2, 700, 1300, 'sine', 0.06); noise(0.15, 3000, 1500, 'bandpass', 0.08); }
+  else if (type === 'shatter') { noise(0.4, 7000, 2000, 'highpass', 0.5); tone(0.3, 2600, 1200, 'triangle', 0.1); tone(0.2, 1800, 900, 'triangle', 0.08); }
+  else if (type === 'steam') { noise(0.9, 3000, 300, 'bandpass', 0.7); tone(0.5, 200, 55, 'sine', 0.35); }
+  else if (type === 'overload') { noise(0.6, 2200, 150, 'lowpass', 0.8); tone(0.45, 320, 45, 'square', 0.12); }
+  else if (type === 'freeze') { noise(0.3, 8000, 3000, 'highpass', 0.3); tone(0.3, 1500, 2300, 'sine', 0.07); }
+  else if (type === 'pickup') { tone(0.12, 660, 990, 'triangle', 0.1); }
+  else if (type === 'rare') { tone(0.5, 523, 1046, 'triangle', 0.1); tone(0.7, 784, 1568, 'sine', 0.08); }
+  else if (type === 'orb') { tone(0.4, 300, 120, 'sine', 0.1); noise(0.3, 600, 200, 'lowpass', 0.15); }
+  else if (type === 'stun') { tone(0.3, 180, 60, 'square', 0.1); noise(0.3, 900, 200, 'lowpass', 0.4); }
+}
+const distVol = p => clamp(1 - Math.hypot(p.x - player.pos.x, p.z - player.pos.z) / 40, 0, 1);
+
+// ============ 法师 & 骨玉权杖 ============
+function buildStaff() {
+  const g = new THREE.Group();
+  const bone = std(0xeae0c6, { roughness: 0.55 }), boneDark = std(0xbcae8c, { roughness: 0.6 });
+  const gold = std(0xd8a842, { metalness: 0.85, roughness: 0.3 });
+  const jade = new THREE.MeshStandardMaterial({ color: 0x2ac88a, emissive: 0x18ff8c, emissiveIntensity: 1.8, roughness: 0.15, metalness: 0.1 });
+  const jadeBand = std(0x2a9a6a, { roughness: 0.3, metalness: 0.2 });
+  mesh(new THREE.CylinderGeometry(0.024, 0.03, 1.75, 8), bone, g, 0, 0.27, 0);
+  for (const y of [-0.38, -0.08, 0.32, 0.66]) mesh(new THREE.SphereGeometry(0.038, 8, 6), boneDark, g, 0, y, 0).scale.set(1, 0.7, 1);
+  for (const y of [0.08, 0.15, 0.85]) { const b = mesh(new THREE.TorusGeometry(0.033, 0.011, 6, 14), jadeBand, g, 0, y, 0); b.rotation.x = Math.PI / 2; }
+  mesh(new THREE.ConeGeometry(0.04, 0.16, 8), gold, g, 0, -0.67, 0).rotation.x = Math.PI;
+  const hy = 1.17;
+  mesh(new THREE.CylinderGeometry(0.055, 0.03, 0.12, 8), gold, g, 0, hy - 0.08, 0);
+  const skull = mesh(new THREE.SphereGeometry(0.085, 12, 10), bone, g, 0, hy + 0.03, 0); skull.scale.set(1, 0.85, 1.1);
+  const eyeM = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
+  for (const s of [1, -1]) mesh(new THREE.SphereGeometry(0.018, 6, 4), eyeM, g, s * 0.032, hy + 0.04, 0.083);
+  for (let k = 0; k < 4; k++) {
+    const a = k * TAU / 4 + Math.PI / 4;
+    const pr = mesh(new THREE.ConeGeometry(0.022, 0.34, 6), bone, g, Math.cos(a) * 0.08, hy + 0.21, Math.sin(a) * 0.08);
+    pr.rotation.z = -Math.cos(a) * 0.38; pr.rotation.x = Math.sin(a) * 0.38;
+  }
+  const gem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.078, 1), jade); gem.position.y = hy + 0.28; g.add(gem);
+  const glow = new THREE.Sprite(glowMat(0x3dffa0)); glow.scale.setScalar(0.6); glow.position.copy(gem.position); g.add(glow);
+  const gl = new THREE.PointLight(0x40ffa0, 1.6, 4, 2); gl.position.copy(gem.position); g.add(gl);
+  const tas = mesh(new THREE.ConeGeometry(0.03, 0.22, 6), std(0xa01a1a), g, 0.05, hy - 0.22, 0); tas.rotation.z = 0.2;
+  const tip = new THREE.Object3D(); tip.position.copy(gem.position); g.add(tip);
+  // 杖头环绕的 3 个小魔法球（火 / 冰 / 玉）
+  const orbs = ['fire', 'ice', 'jade'].map((k, i) => {
+    const b = makeBlob(k); b.g.scale.setScalar(0.045); g.add(b.g);
+    return { b, ph: i * TAU / 3, tilt: [0.55, -0.45, 0.1][i] };
+  });
+  return { group: g, gem, glow, tip, gl, orbs, gemY: gem.position.y };
+}
+function animStaffOrbs(st, dt, ck) {
+  const sp = 2.3 + ck * 6, R = 0.18 - ck * 0.05;
+  for (const o of st.orbs) {
+    o.ph += dt * sp;
+    const x = Math.cos(o.ph) * R, z = Math.sin(o.ph) * R;
+    o.b.g.position.set(x, st.gemY + z * Math.sin(o.tilt) + Math.sin(o.ph * 2) * 0.02, z * Math.cos(o.tilt));
+    o.b.g.scale.setScalar(0.045 * (1 + ck * 0.35));
+    o.b.update(dt, 1.5 + ck * 2);
+  }
+}
+
+function buildMage() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const robe = std(0x22366f), robeDark = std(0x151f44), trim = std(0xcfa43a, { metalness: 0.75, roughness: 0.35 });
+  const skin = std(0xe3b38a, { roughness: 0.65 }), hair = std(0x17110d), boot = std(0x2b1c12);
+  const capeMat = std(0x7a1822, { side: THREE.DoubleSide });
+  const jade = new THREE.MeshStandardMaterial({ color: 0x2ac88a, emissive: 0x18ff8c, emissiveIntensity: 1.2 });
+  const leg = side => {
+    const p = new THREE.Group(); p.position.set(side * 0.12, 0.95, 0); body.add(p);
+    mesh(new THREE.BoxGeometry(0.15, 0.86, 0.17), robeDark, p, 0, -0.43, 0);
+    mesh(new THREE.BoxGeometry(0.17, 0.14, 0.28), boot, p, 0, -0.88, 0.04);
+    return p;
+  };
+  const legL = leg(1), legR = leg(-1);
+  const skirt = mesh(new THREE.CylinderGeometry(0.27, 0.46, 0.78, 14), robe, body, 0, 0.68, 0);
+  mesh(new THREE.CylinderGeometry(0.465, 0.47, 0.06, 14), trim, body, 0, 0.3, 0);
+  const torso = new THREE.Group(); torso.position.y = 0.98; body.add(torso);
+  mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.62, 12), robe, torso, 0, 0.3, 0);
+  mesh(new THREE.CylinderGeometry(0.285, 0.285, 0.09, 14), trim, torso, 0, 0.03, 0);
+  mesh(new THREE.BoxGeometry(0.11, 0.11, 0.04), trim, torso, 0, 0.03, 0.28);
+  mesh(new THREE.BoxGeometry(0.06, 0.48, 0.02), trim, torso, 0, 0.33, 0.255);
+  for (const s of [1, -1]) mesh(new THREE.SphereGeometry(0.13, 10, 8), trim, torso, s * 0.3, 0.57, 0).scale.set(1.25, 0.7, 1.1);
+  const collar = mesh(new THREE.TorusGeometry(0.15, 0.045, 8, 16), trim, torso, 0, 0.64, 0); collar.rotation.x = Math.PI / 2;
+  const head = new THREE.Group(); head.position.set(0, 0.8, 0.01); torso.add(head);
+  mesh(new THREE.SphereGeometry(0.14, 16, 12), skin, head);
+  const hr = mesh(new THREE.SphereGeometry(0.153, 16, 12, 0, TAU, 0, Math.PI * 0.58), hair, head, 0, 0.015, -0.012); hr.rotation.x = -0.28;
+  const tail = mesh(new THREE.CylinderGeometry(0.05, 0.02, 0.36, 8), hair, head, 0, -0.1, -0.15); tail.rotation.x = 0.45;
+  const band = mesh(new THREE.TorusGeometry(0.146, 0.014, 6, 20), trim, head, 0, 0.055, 0); band.rotation.x = Math.PI / 2;
+  mesh(new THREE.OctahedronGeometry(0.035), jade, head, 0, 0.065, 0.148);
+  const cg = new THREE.PlaneGeometry(0.56, 1.08, 1, 4); cg.translate(0, -0.54, 0);
+  const cape = mesh(cg, capeMat, torso, 0, 0.62, -0.25);
+  const arm = side => {
+    const sh = new THREE.Group(); sh.position.set(side * 0.34, 0.56, 0); torso.add(sh);
+    mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.32, 8), robe, sh, 0, -0.16, 0);
+    const fore = new THREE.Group(); fore.position.y = -0.3; sh.add(fore);
+    mesh(new THREE.CylinderGeometry(0.085, 0.145, 0.3, 10), robe, fore, 0, -0.15, 0);
+    mesh(new THREE.CylinderGeometry(0.147, 0.147, 0.04, 10), trim, fore, 0, -0.29, 0);
+    const hand = new THREE.Group(); hand.position.y = -0.36; fore.add(hand);
+    mesh(new THREE.SphereGeometry(0.062, 8, 6), skin, hand);
+    return { sh, fore, hand };
+  };
+  const armL = arm(1), armR = arm(-1);
+  const staff = buildStaff(); armR.hand.add(staff.group);
+  return { root, body, torso, legL, legR, armL, armR, head, cape, skirt, staff };
+}
+
+// ============ 半兽人 ============
+const ORC_TYPES = {
+  grunt:   { name: '半兽人',   hp: 55,  scale: 1.0,  skin: 0x8a6a3e, armor: 0x5a3a22, speed: 3.7, dmg: 10, reach: 2.0, wind: 0.6, ai: 'melee' },
+  warrior: { name: '半兽战士', hp: 120, scale: 1.15, skin: 0x63733a, armor: 0x4c4c56, speed: 3.4, dmg: 16, reach: 2.2, wind: 0.6, ai: 'charger', helm: true },
+  shaman:  { name: '半兽萨满', hp: 50,  scale: 0.95, skin: 0x6b7a52, armor: 0x5a2a6a, speed: 3.3, dmg: 14, reach: 0, wind: 0.85, ai: 'caster', caster: true },
+  hero:    { name: '半兽勇士', hp: 900, scale: 1.7,  skin: 0x4c5c2a, armor: 0x9a7428, speed: 3.2, dmg: 28, reach: 3.2, wind: 0.8, ai: 'boss', helm: true, boss: true },
+};
+function buildOrc(T) {
+  const root = new THREE.Group(), body = new THREE.Group(); body.scale.setScalar(T.scale); root.add(body);
+  const mats = []; const M = (c, o) => { const m = std(c, o); mats.push(m); return m; };
+  const skin = M(T.skin, { roughness: 0.75 }), leather = M(0x4a2f1c, { roughness: 0.9 }), armor = M(T.armor, { metalness: 0.6, roughness: 0.45 });
+  const bone = M(0xe8e0c8), dark = M(0x1a1410), wood = M(0x5a3b22);
+  const eye = new THREE.MeshBasicMaterial({ color: T.boss ? 0xffcc20 : 0xff3010 });
+  const leg = side => {
+    const p = new THREE.Group(); p.position.set(side * 0.2, 0.92, 0); body.add(p);
+    mesh(new THREE.BoxGeometry(0.27, 0.5, 0.3), skin, p, 0, -0.25, 0);
+    mesh(new THREE.BoxGeometry(0.25, 0.45, 0.28), leather, p, 0, -0.66, 0);
+    mesh(new THREE.BoxGeometry(0.29, 0.12, 0.42), dark, p, 0, -0.88, 0.06);
+    return p;
+  };
+  const legL = leg(1), legR = leg(-1);
+  mesh(new THREE.BoxGeometry(0.64, 0.28, 0.44), leather, body, 0, 0.98, 0);
+  mesh(new THREE.BoxGeometry(0.3, 0.42, 0.04), leather, body, 0, 0.74, 0.23);
+  const torso = new THREE.Group(); torso.position.y = 1.05; body.add(torso);
+  mesh(new THREE.BoxGeometry(0.84, 0.72, 0.52), skin, torso, 0, 0.38, 0);
+  mesh(new THREE.SphereGeometry(0.32, 10, 8), skin, torso, 0, 0.2, 0.12).scale.set(1.15, 0.9, 0.8);
+  const strap = mesh(new THREE.BoxGeometry(0.13, 0.9, 0.56), leather, torso, 0, 0.38, 0); strap.rotation.z = 0.6;
+  for (const s of [1, -1]) {
+    const pad = mesh(new THREE.SphereGeometry(0.23, 10, 8, 0, TAU, 0, Math.PI / 2), armor, torso, s * 0.5, 0.7, 0); pad.scale.set(1.1, 0.9, 1.1);
+    mesh(new THREE.ConeGeometry(0.05, 0.2, 6), bone, pad, 0, 0.27, 0);
+  }
+  if (T.boss) mesh(new THREE.BoxGeometry(0.9, 0.5, 0.06), armor, torso, 0, 0.42, 0.27);
+  const head = new THREE.Group(); head.position.set(0, 0.84, 0.1); torso.add(head);
+  mesh(new THREE.BoxGeometry(0.42, 0.36, 0.4), skin, head, 0, 0.08, 0);
+  mesh(new THREE.BoxGeometry(0.46, 0.16, 0.42), skin, head, 0, -0.12, 0.04);
+  mesh(new THREE.BoxGeometry(0.45, 0.08, 0.12), dark, head, 0, 0.18, 0.16);
+  for (const s of [1, -1]) {
+    mesh(new THREE.BoxGeometry(0.08, 0.045, 0.02), eye, head, s * 0.1, 0.11, 0.205);
+    const tk = mesh(new THREE.ConeGeometry(0.036, 0.17, 6), bone, head, s * 0.14, -0.03, 0.22); tk.rotation.z = -s * 0.25;
+    const ear = mesh(new THREE.ConeGeometry(0.06, 0.24, 4), skin, head, s * 0.25, 0.1, -0.02); ear.rotation.z = -s * 1.25;
+  }
+  mesh(new THREE.BoxGeometry(0.1, 0.1, 0.08), skin, head, 0, 0.04, 0.22);
+  if (T.helm) {
+    const hm = mesh(new THREE.SphereGeometry(0.27, 12, 8, 0, TAU, 0, Math.PI / 2), armor, head, 0, 0.18, 0); hm.scale.set(1, 0.8, 1);
+    for (const s of [1, -1]) { const hn = mesh(new THREE.ConeGeometry(0.05, 0.3, 6), bone, hm, s * 0.24, 0.12, 0); hn.rotation.z = -s * 0.9; }
+  } else mesh(new THREE.BoxGeometry(0.07, 0.16, 0.38), dark, head, 0, 0.3, -0.02);
+  const arm = side => {
+    const sh = new THREE.Group(); sh.position.set(side * 0.53, 0.62, 0); torso.add(sh);
+    mesh(new THREE.BoxGeometry(0.22, 0.46, 0.24), skin, sh, 0, -0.23, 0);
+    const fore = new THREE.Group(); fore.position.y = -0.46; sh.add(fore);
+    mesh(new THREE.BoxGeometry(0.21, 0.42, 0.22), skin, fore, 0, -0.2, 0);
+    mesh(new THREE.BoxGeometry(0.25, 0.18, 0.26), leather, fore, 0, -0.18, 0);
+    mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), skin, fore, 0, -0.45, 0);
+    const hand = new THREE.Group(); hand.position.y = -0.45; fore.add(hand);
+    return { sh, fore, hand };
+  };
+  const armL = arm(1), armR = arm(-1);
+  const axe = new THREE.Group(); armR.hand.add(axe);
+  if (T.caster) { // 萨满：骨杖 + 毒光
+    const hd = mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.5, 6), wood, axe, 0, 0, 0.2); hd.rotation.x = Math.PI / 2;
+    mesh(new THREE.SphereGeometry(0.11, 8, 6), bone, axe, 0, 0, 0.98);
+    const g = new THREE.Sprite(glowMat(0x8aff30)); g.scale.setScalar(0.9); g.position.set(0, 0, 1.0); axe.add(g);
+    mesh(new THREE.ConeGeometry(0.3, 0.5, 6), armor, head, 0, 0.36, -0.02);
+  } else {
+    const hd = mesh(new THREE.CylinderGeometry(0.035, 0.04, 1.2, 6), wood, axe, 0, 0, 0.32); hd.rotation.x = Math.PI / 2;
+    const bl = T.boss ? 1.4 : 1;
+    mesh(new THREE.BoxGeometry(0.05, 0.42 * bl, 0.32 * bl), armor, axe, 0, 0.14 * bl, 0.8);
+    mesh(new THREE.BoxGeometry(0.05, 0.12, 0.16), armor, axe, 0, -0.1, 0.84);
+  }
+  return { root, body, torso, head, legL, legR, armL, armR, mats };
+}
+
+// ============ 浮动文字 / 血条 ============
+const dmgLayer = $('dmg'), barsLayer = $('bars');
+const floaters = [];
+const camFwd = V3(0, 0, 1), _sv = V3(), _sp = { x: 0, y: 0 };
+function toScreen(p, out) {
+  _sv.subVectors(p, camera.position);
+  if (_sv.dot(camFwd) < 0.2) return false;
+  _sv.copy(p).project(camera);
+  out.x = (_sv.x * 0.5 + 0.5) * innerWidth; out.y = (-_sv.y * 0.5 + 0.5) * innerHeight; return true;
+}
+function floater(p, text, cls = '', color = null) {
+  if (floaters.length > 90) { const f = floaters.shift(); f.el.remove(); }
+  const el = document.createElement('div'); el.className = 'floater ' + cls; el.textContent = text; dmgLayer.appendChild(el);
+  if (color) el.style.color = color;
+  floaters.push({ el, p: p.clone(), t: 0, vx: rand(-0.8, 0.8), dur: cls.includes('react') ? 1.4 : cls.includes('crit') ? 1.1 : 0.9 });
+}
+function updateFloaters(dt) {
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i]; f.t += dt; f.p.y += dt * 1.4; f.p.x += f.vx * dt * 0.5;
+    if (f.t > f.dur) { f.el.remove(); floaters.splice(i, 1); continue; }
+    if (!toScreen(f.p, _sp)) { f.el.style.opacity = 0; continue; }
+    const k = f.t / f.dur, sc = f.t < 0.12 ? 1.6 - f.t / 0.12 * 0.6 : 1;
+    f.el.style.opacity = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
+    f.el.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-50%) scale(${sc})`;
+  }
+}
+let bannerTimer = 0;
+function banner(text, sub = '', dur = 2.5) { const b = $('banner'); b.innerHTML = text + (sub ? `<small>${sub}</small>` : ''); b.style.opacity = 1; bannerTimer = dur; }
+
+// ====================================================================
+//  咒链 · 战斗规则
+// ====================================================================
+let time = 0;
+const orcs = [];
+const keys = {};
+let mouseX = innerWidth / 2, mouseY = innerHeight / 2, lmb = false, rmb = false;
+let started = false, paused = true, invOpen = false;
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const _c = V3(), _oc = V3();
+
+// ============ 元素 / 稀有度 ============
+const EL = {
+  fire:   { name: '火焰', color: 0xff7a2a, css: '#ff9a40', c0: FIRE0, c1: FIRE1, blob: 'fire' },
+  ice:    { name: '冰霜', color: 0x66d0ff, css: '#8fe0ff', c0: [0.85, 0.97, 1], c1: [0.15, 0.45, 1], blob: 'ice' },
+  bolt:   { name: '闪电', color: 0xa88cff, css: '#c9b4ff', c0: [0.95, 0.92, 1], c1: [0.45, 0.3, 1], blob: 'bolt' },
+  arcane: { name: '奥术', color: 0xff5ae0, css: '#ff8aea', c0: [1, 0.75, 1], c1: [0.65, 0.1, 0.9], blob: 'arcane' },
+};
+const RAR = [
+  { name: '普通', css: '#e4e4e4', hex: 0xdddddd },
+  { name: '魔法', css: '#6fa8ff', hex: 0x4f8cff },
+  { name: '稀有', css: '#ffd84a', hex: 0xffd040 },
+  { name: '传说', css: '#ff8a2a', hex: 0xff7a1a },
+];
+const MODC = { mod: '#3ab8a0', multi: '#d8a830', payload: '#d04ab8' };
+
+// ============ 法术卡 ============
+// type: proj 投射物 | mod 修饰下一张 | multi 同时施放后 n 张 | payload 下一张命中时施放再下一张
+const CARDS = {
+  spark:    { name: '火花弹',   type: 'proj', el: 'fire',   rar: 0, cost: 3,  dmg: 8,  speed: 32, life: 0.75, size: 0.6, glyph: '火', desc: '高速小火弹，点燃敌人。' },
+  ice:      { name: '冰锥',     type: 'proj', el: 'ice',    rar: 0, cost: 5,  dmg: 9,  speed: 36, life: 0.7,  size: 0.7, pierce: 1, glyph: '冰', desc: '穿透 1 名敌人，叠加 1 层冰寒。冰寒 5 层 = 冻结。' },
+  missile:  { name: '奥术飞弹', type: 'proj', el: 'arcane', rar: 0, cost: 5,  dmg: 10, speed: 19, life: 1.8,  size: 0.7, homing: 3.5, glyph: '奥', desc: '自动追踪附近敌人。无元素附着，适合打碎冻结的敌人。' },
+  fireball: { name: '火球',     type: 'proj', el: 'fire',   rar: 1, cost: 14, dmg: 20, speed: 18, life: 1.25, size: 1.5, aoe: 2.8, delay: 0.12, glyph: '炎', desc: '命中或飞行结束时爆炸，范围伤害并点燃。' },
+  arc:      { name: '雷弧',     type: 'proj', el: 'bolt',   rar: 1, cost: 9,  dmg: 11, speed: 50, life: 0.5,  size: 0.7, chain: 3, glyph: '雷', desc: '命中后跳向附近 3 名敌人，并使其感电（受到伤害 +25%）。' },
+  frost:    { name: '冰霜新星', type: 'proj', el: 'ice',    rar: 2, cost: 22, dmg: 14, nova: 5, delay: 0.2, glyph: '霜', desc: '在施放点爆发 5 米寒气：叠加 2 层冰寒并击退。配合载荷可以在远处爆发。' },
+  haste:    { name: '疾速',     type: 'mod', rar: 0, cost: 1, delay: -0.1, glyph: '疾', desc: '施法延迟 -0.1 秒；下一张法术飞行速度 +40%。', apply: s => { s.speed *= 1.4; } },
+  pierce:   { name: '穿透',     type: 'mod', rar: 0, cost: 3, glyph: '穿', desc: '下一张法术额外穿透 2 名敌人。', apply: s => { s.pierce += 2; } },
+  power:    { name: '增幅',     type: 'mod', rar: 1, cost: 6, delay: 0.05, glyph: '增', desc: '下一张法术伤害 +60%，体积和爆炸范围变大。', apply: s => { s.dmg *= 1.6; s.size *= 1.35; s.aoe *= 1.25; s.nova *= 1.2; } },
+  homing:   { name: '追踪',     type: 'mod', rar: 1, cost: 3, glyph: '追', desc: '下一张法术会追踪敌人。', apply: s => { s.homing = Math.max(s.homing, 4.5); } },
+  bounce:   { name: '弹射',     type: 'mod', rar: 1, cost: 3, glyph: '弹', desc: '下一张法术命中后弹向附近敌人，最多 2 次。', apply: s => { s.bounce += 2; } },
+  double:   { name: '双重施法', type: 'multi', n: 2, rar: 1, cost: 1, glyph: '×2', desc: '把后面的 2 张法术同时施放（扇形）。' },
+  split:    { name: '分裂',     type: 'mod', rar: 2, cost: 5, glyph: '裂', desc: '下一张法术命中时分裂出 3 枚 50% 伤害的复制体。', apply: s => { s.split += 3; } },
+  triple:   { name: '三重施法', type: 'multi', n: 3, rar: 2, cost: 2, delay: 0.08, glyph: '×3', desc: '把后面的 3 张法术同时施放（扇形）。' },
+  payload:  { name: '载荷',     type: 'payload', rar: 2, cost: 3, glyph: '载', desc: '下一张法术命中时，从命中点施放再后面的那张法术。可以嵌套。' },
+};
+const CARD_ORDER = Object.keys(CARDS);
+const cardColor = k => { const C = CARDS[k]; return C.type === 'proj' ? EL[C.el].css : MODC[C.type]; };
+function cardHTML(k, cls = '', attrs = '') {
+  if (!k) return `<div class="card empty ${cls}" ${attrs}></div>`;
+  const C = CARDS[k];
+  return `<div class="card ${C.type === 'proj' ? '' : 'mod'} ${cls}" style="--c:${cardColor(k)};--rc:${RAR[C.rar].css}" data-card="${k}" ${attrs}>${C.glyph}${cls.includes('sm') ? '' : `<span class="cost">${C.cost}</span>`}</div>`;
+}
+
+// ============ 法杖 ============
+const AFF_NAME = { dmg: '法术伤害', fire: '火焰伤害', ice: '冰霜伤害', bolt: '闪电伤害', arcane: '奥术伤害', react: '元素反应伤害', crit: '暴击率', speed: '弹道速度' };
+const AFF_RANGE = { dmg: [8, 18], fire: [15, 30], ice: [15, 30], bolt: [15, 30], arcane: [15, 30], react: [20, 45], crit: [3, 8], speed: [10, 25] };
+const STAFF_BASES = ['桦木法杖', '骨杖', '玉髓权杖', '雷击木杖', '寒铁法杖', '龙骨权杖', '蘑菇法杖', '古树之枝', '沃玛祭杖'];
+const LEGENDS = [
+  { name: '焚天', always: 'spark', aff: { fire: 60 } },
+  { name: '霜语者', always: 'ice', aff: { ice: 60 } },
+  { name: '无尽回响', always: 'arc', aff: { bolt: 40, react: 40 } },
+  { name: '星界织网', always: 'missile', aff: { arcane: 60 } },
+  { name: '沃玛之心', always: 'fireball', aff: { dmg: 30 } },
+];
+let staffUid = 0;
+function makeStaff(o) {
+  const st = Object.assign({ name: '法杖', rar: 0, ilvl: 1, slots: 4, delay: 0.2, reload: 0.6, manaMax: 100, regen: 30, spread: 3, aff: {}, always: null, cards: [] }, o);
+  st.id = ++staffUid; st.mana = st.manaMax; st.idx = 0; st.cd = 0; st.cdMax = 0.01; st.reloading = false; st.flash = 0;
+  while (st.cards.length < st.slots) st.cards.push(null);
+  st.cards.length = st.slots;
+  return st;
+}
+function rollAff(k, ilvl) {
+  const [a, b] = AFF_RANGE[k], grow = (k === 'crit' || k === 'speed') ? 0.08 : 0.25;
+  return Math.round(rand(a, b) * (1 + grow * (ilvl - 1)));
+}
+function pickCard(rar, projOnly = false) {
+  rar = Math.min(rar, 2);
+  for (let r = rar; r >= 0; r--) {
+    const ks = CARD_ORDER.filter(k => CARDS[k].rar === r && (!projOnly || CARDS[k].type === 'proj'));
+    if (ks.length) return pick(ks);
+  }
+  return 'spark';
+}
+function genStaff(rar, ilvl) {
+  const o = { rar, ilvl, aff: {} };
+  o.slots = [randInt(2, 4), randInt(3, 5), randInt(5, 7), randInt(6, 9)][rar];
+  o.delay = +clamp(rand(0.1, 0.34) - rar * 0.02, 0.05, 0.4).toFixed(2);
+  o.reload = +clamp(rand(0.35, 1.2) - rar * 0.08, 0.15, 1.4).toFixed(2);
+  o.manaMax = Math.round(rand(60, 110) + rar * 35 + ilvl * 6);
+  o.regen = Math.round(rand(20, 40) + rar * 8 + ilvl * 2);
+  o.spread = +Math.max(0, rand(-2, 8) - rar * 1.5).toFixed(1);
+  const pool = Object.keys(AFF_NAME);
+  for (let i = 0; i < rar; i++) { const k = pool.splice(randInt(0, pool.length - 1), 1)[0]; o.aff[k] = rollAff(k, ilvl); }
+  if (rar === 3) {
+    const L = pick(LEGENDS); o.name = L.name; o.always = L.always;
+    for (const k in L.aff) o.aff[k] = (o.aff[k] || 0) + L.aff[k];
+  } else {
+    const pre = o.delay < 0.13 ? '迅捷的' : o.reload < 0.4 ? '速充的' : o.manaMax > 150 ? '深邃的' : o.slots >= 6 ? '宽广的' : o.spread < 1 ? '精准的' : '';
+    o.name = pre + pick(STAFF_BASES);
+  }
+  o.cards = [];
+  const n = randInt(1, Math.min(o.slots, 2 + rar));
+  for (let i = 0; i < n; i++) o.cards.push(i === n - 1 || Math.random() < 0.55 ? pickCard(randInt(0, rar), true) : pickCard(randInt(0, rar)));
+  return makeStaff(o);
+}
+function staffStatsHTML(st, short = false) {
+  const a = Object.entries(st.aff).map(([k, v]) => `<span class="af">+${v}% ${AFF_NAME[k]}</span>`).join('　');
+  const base = `施法延迟 <em>${st.delay.toFixed(2)}s</em> · 充能 <em>${st.reload.toFixed(2)}s</em> · 法力 <em>${st.manaMax}</em>（+${st.regen}/s）· 散射 <em>${st.spread}°</em> · 卡槽 <em>${st.slots}</em>`;
+  return base + (a ? '<br>' + a : '') + (st.always ? `<br><span class="lg">常驻施法：每次施法额外打出【${CARDS[st.always].name}】</span>` : '');
+}
+
+// ============ 镜头（俯视 3/4 视角） ============
+const CAM_PITCH = 1.08, CAM_DIST = 23;
+const FWD = V3(1, 0, 0), RIGHT = V3(0, 0, 1); // 屏幕上 = 东(+x)，屏幕右 = +z
+const cam = { target: V3(START.x, H(START.x, START.z) + 0.8, START.z), shake: 0, zoom: 1 };
+function addShake(a) { cam.shake = Math.min(1, cam.shake + a); }
+function updateCamera(dt) {
+  const lx = aim.ground.x - player.pos.x, lz = aim.ground.z - player.pos.z;
+  const ll = Math.hypot(lx, lz), lk = ll > 0 ? Math.min(ll * 0.2, 3) / ll : 0;
+  cam.target.x = damp(cam.target.x, player.pos.x + lx * lk, 7, dt);
+  cam.target.z = damp(cam.target.z, player.pos.z + lz * lk, 7, dt);
+  cam.target.y = damp(cam.target.y, player.pos.y + 0.8, 6, dt);
+  const d = CAM_DIST * cam.zoom;
+  let cx = cam.target.x - Math.cos(CAM_PITCH) * d, cy = cam.target.y + Math.sin(CAM_PITCH) * d, cz = cam.target.z;
+  if (cam.shake > 0) { const s = cam.shake * cam.shake * 0.5; cx += rand(-s, s); cy += rand(-s, s); cz += rand(-s, s); cam.shake = Math.max(0, cam.shake - dt * 2.4); }
+  camera.position.set(cx, cy, cz);
+  camera.lookAt(cam.target);
+  camFwd.subVectors(cam.target, camera.position).normalize();
+}
+
+// ============ 光标拾取 ============
+const aim = { point: V3(), ground: V3(START.x + 5, H(START.x + 5, START.z), START.z), orc: null };
+const raycaster = new THREE.Raycaster(), _ndc = new THREE.Vector2();
+function computeAim() {
+  _ndc.set(mouseX / innerWidth * 2 - 1, -(mouseY / innerHeight) * 2 + 1);
+  raycaster.setFromCamera(_ndc, camera);
+  const o = raycaster.ray.origin, d = raycaster.ray.direction;
+  let best = 1e9, hit = null;
+  for (const e of orcs) {
+    if (e.dead) continue; e.center(_c); _oc.subVectors(o, _c);
+    const r = e.hitR * 1.2, b = _oc.dot(d), cc = _oc.lengthSq() - r * r, disc = b * b - cc;
+    if (disc > 0) { const t = -b - Math.sqrt(disc); if (t > 0 && t < best) { best = t; hit = e; } }
+  }
+  let tg = null, prev = 1;
+  for (let t = 1; t < 140; t += 0.6) {
+    if (o.y + d.y * t < H(o.x + d.x * t, o.z + d.z * t)) {
+      let lo = prev, hi = t;
+      for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; if (o.y + d.y * m < H(o.x + d.x * m, o.z + d.z * m)) hi = m; else lo = m; }
+      tg = hi; break;
+    }
+    prev = t;
+  }
+  if (tg === null) tg = d.y < -0.01 ? (o.y - player.pos.y) / -d.y : 30;
+  aim.ground.copy(o).addScaledVector(d, tg);
+  aim.orc = hit;
+  if (hit) hit.center(aim.point); else aim.point.copy(aim.ground);
+}
+const aimRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+aimRing.rotation.x = -Math.PI / 2; aimRing.renderOrder = 3; scene.add(aimRing);
+
+// ============ 输入 ============
+addEventListener('keydown', e => {
+  if (e.code === 'Tab' || e.code === 'KeyI') { e.preventDefault(); if (started && !paused && !e.repeat) toggleInv(); return; }
+  keys[e.code] = true;
+  if (e.code === 'Escape') { if (invOpen) toggleInv(); else if (started) setPaused(!paused); }
+  if (e.code === 'Space') { e.preventDefault(); tryBlink(); }
+  if (e.code === 'KeyR' && player.dead) respawn();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+canvas.addEventListener('mousedown', e => { if (paused || invOpen) return; if (e.button === 0) lmb = true; if (e.button === 2) rmb = true; });
+addEventListener('mouseup', e => { if (e.button === 0) lmb = false; if (e.button === 2) rmb = false; });
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+addEventListener('blur', () => { lmb = rmb = false; for (const k in keys) keys[k] = false; });
+canvas.addEventListener('wheel', e => { cam.zoom = clamp(cam.zoom + Math.sign(e.deltaY) * 0.06, 0.7, 1.3); }, { passive: true });
+function updateBodyClass() { document.body.classList.toggle('playing', started && !paused && !invOpen); }
+function setPaused(v) {
+  paused = v;
+  if (v) { lmb = rmb = false; for (const k in keys) keys[k] = false; }
+  $('overlay').style.display = v ? 'flex' : 'none';
+  if (v && started) $('startBtn').textContent = '继续';
+  updateBodyClass();
+}
+$('startBtn').addEventListener('click', () => {
+  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  if (!started) {
+    started = true;
+    setTimeout(() => banner('沃玛森林', '左键 / 右键 施法 · Tab 打开法杖工坊', 3.5), 300);
+  }
+  setPaused(false);
+});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ============ 玩家 ============
+const mage = buildMage(); scene.add(mage.root);
+const handOrb = makeBlob('fire');
+handOrb.g.position.set(0, -0.2, 0.03); handOrb.g.visible = false; mage.armL.hand.add(handOrb.g);
+const handLight = new THREE.PointLight(0xff7a2a, 0, 6, 2); scene.add(handLight);
+const BLINK_MAX = 2, BLINK_CD = 1.8, BLINK_D = 6.5;
+const player = {
+  pos: V3(START.x, H(START.x, START.z), START.z), vel: V3(), facing: START_YAW, hp: 240, maxHp: 240,
+  dead: false, deadT: 0, invuln: 0, lastHurt: -99, walkPhase: 0, aimBlend: 0, kick: 0, faceT: 0, noMpT: 0,
+  blinkCh: BLINK_MAX, blinkT: 0, lastEl: 'fire', crit: 0.08, critMul: 2,
+};
+function moveInput() {
+  const ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), iz = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+  const v = V3(FWD.x * iz + RIGHT.x * ix, 0, FWD.z * iz + RIGHT.z * ix); if (v.lengthSq() > 0) v.normalize(); return v;
+}
+function collidePos(p, r) {
+  for (const c of colliders) {
+    const dx = p.x - c.x, dz = p.z - c.z, rr = r + c.r, d2 = dx * dx + dz * dz;
+    if (d2 < rr * rr && d2 > 1e-6) { const d = Math.sqrt(d2), k = (rr - d) / d; p.x += dx * k; p.z += dz * k; }
+  }
+  const d = Math.hypot(p.x, p.z); if (d > WORLD_R) { p.x *= WORLD_R / d; p.z *= WORLD_R / d; }
+}
+function tryBlink() {
+  const P = player;
+  if (!started || paused || invOpen || P.dead || P.blinkCh < 1) return;
+  const m = moveInput();
+  if (!m.lengthSq()) m.set(aim.ground.x - P.pos.x, 0, aim.ground.z - P.pos.z);
+  if (m.lengthSq() < 1e-4) m.set(Math.sin(P.facing), 0, Math.cos(P.facing));
+  m.normalize();
+  const from = P.pos.clone(), to = P.pos.clone();
+  for (let s = 0; s < 13; s++) { to.addScaledVector(m, BLINK_D / 13); collidePos(to, 0.38); }
+  to.y = H(to.x, to.z);
+  for (let i = 0; i < 40; i++) {
+    const k = Math.random(), x = lerp(from.x, to.x, k), z = lerp(from.z, to.z, k);
+    fx.emit(x + rand(-.3, .3), H(x, z) + rand(0.2, 1.8), z + rand(-.3, .3), rand(-.5, .5), rand(0, 1), rand(-.5, .5), rand(0.3, 0.6), 0.45, 0.05, [0.6, 0.85, 1], [0.15, 0.35, 1], 0, 2, 0.9);
+  }
+  for (let i = 0; i < 24; i++) { const r = rdir(); fx.emit(to.x, to.y + 1, to.z, r[0] * 4, r[1] * 3, r[2] * 4, 0.35, 0.4, 0.05, [0.8, 0.95, 1], [0.2, 0.4, 1], 0, 4); }
+  P.pos.copy(to); P.vel.set(0, 0, 0);
+  P.blinkCh--; P.invuln = Math.max(P.invuln, 0.3);
+  lightFlash(V3(to.x, to.y + 1, to.z), 40, 0.25, 0x66aaff);
+  sfx('dodge', 0.9);
+}
+function updatePlayer(dt) {
+  const P = player;
+  if (P.dead) { P.deadT += dt; const k = Math.min(1, P.deadT / 0.7); mage.body.rotation.x = -k * k * Math.PI / 2 * 0.95; return; }
+  P.invuln -= dt; P.faceT -= dt; P.noMpT -= dt;
+  if (P.blinkCh < BLINK_MAX) { P.blinkT += dt; if (P.blinkT >= BLINK_CD) { P.blinkT = 0; P.blinkCh++; } }
+  const m = moveInput(), casting = lmb || rmb;
+  const speed = 5.8 * (casting ? 0.8 : 1);
+  P.vel.x = damp(P.vel.x, m.x * speed, 14, dt); P.vel.z = damp(P.vel.z, m.z * speed, 14, dt);
+  P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
+  collidePos(P.pos, 0.38);
+  P.pos.y = H(P.pos.x, P.pos.z);
+  const sp = Math.hypot(P.vel.x, P.vel.z);
+  const aimAng = Math.atan2(aim.ground.x - P.pos.x, aim.ground.z - P.pos.z);
+  if (casting || P.faceT > 0) P.facing = dampAngle(P.facing, aimAng, 25, dt);
+  else if (sp > 0.3) P.facing = dampAngle(P.facing, Math.atan2(P.vel.x, P.vel.z), 12, dt);
+  for (const st of equip) {
+    if (!st) continue;
+    st.cd -= dt; if (st.cd <= 0) st.reloading = false;
+    st.mana = Math.min(st.manaMax, st.mana + st.regen * dt);
+  }
+  if (lmb && equip[0]) tryCast(equip[0]);
+  if (rmb && equip[1]) tryCast(equip[1]);
+  if (time - P.lastHurt > 5) P.hp = Math.min(P.maxHp, P.hp + 6 * dt);
+  P.aimBlend = damp(P.aimBlend, (casting || P.faceT > 0) ? 1 : 0, 14, dt);
+  P.kick = damp(P.kick, 0, 10, dt);
+  animateMage(dt, sp);
+}
+function peekEl(st) {
+  for (let i = st.idx; i < st.slots; i++) { const k = st.cards[i]; if (k && CARDS[k].type === 'proj') return CARDS[k].el; }
+  return st.always ? CARDS[st.always].el : null;
+}
+function animateMage(dt, sp) {
+  const P = player, M = mage, a = P.aimBlend;
+  const amt = clamp(sp / 5.8, 0, 1.6), am = Math.min(amt, 1.2);
+  P.walkPhase += dt * sp * 1.85;
+  const s = Math.sin(P.walkPhase);
+  M.root.position.copy(P.pos); M.root.rotation.y = P.facing;
+  if (!P.dead) M.body.rotation.x = 0;
+  M.legL.rotation.x = s * 0.65 * am; M.legR.rotation.x = -s * 0.65 * am;
+  M.body.position.y = Math.abs(Math.cos(P.walkPhase)) * 0.05 * Math.min(amt, 1);
+  M.torso.rotation.x = lerp(0.09 * amt, 0.04, a);
+  M.torso.rotation.y = lerp(0, 0.12, a);
+  M.head.rotation.y = lerp(0, -0.12, a);
+  M.armR.sh.rotation.x = lerp(-0.25 + s * 0.3 * am, -1.45 + P.kick * 0.35, a);
+  M.armR.sh.rotation.z = lerp(0.06, -0.12, a);
+  M.armR.fore.rotation.x = lerp(-0.55, -0.05, a);
+  M.staff.group.rotation.x = lerp(0.8, Math.PI - 0.05, a);
+  M.armL.sh.rotation.x = lerp(-s * 0.4 * am, -1.2, a);
+  M.armL.sh.rotation.z = lerp(-0.06, -0.28, a);
+  M.armL.fore.rotation.x = lerp(-0.25, -0.55 + P.kick * 0.45, a);
+  // 按住施法：左手托着下一张法术的元素光团
+  const holding = (lmb || rmb) && !P.dead;
+  const nst = rmb && !lmb ? equip[1] : equip[0];
+  const nel = holding && nst ? peekEl(nst) : null;
+  if (nel) {
+    handOrb.setKind(EL[nel].blob); handOrb.g.visible = true;
+    handOrb.g.scale.setScalar(0.1 + P.kick * 0.08 + Math.sin(time * 20) * 0.01); handOrb.update(dt, 2);
+    handLight.color.setHex(EL[nel].color); handLight.intensity = 4 + P.kick * 10;
+    handOrb.g.getWorldPosition(handLight.position);
+  } else { handOrb.g.visible = false; handLight.intensity = P.kick * 8; mage.staff.tip.getWorldPosition(handLight.position); }
+  animStaffOrbs(M.staff, dt, holding ? 0.6 : 0);
+  M.cape.rotation.x = 0.12 + Math.min(amt, 1.5) * 0.45 + Math.sin(P.walkPhase * 2) * 0.04 * amt;
+  const gc = EL[P.lastEl].color;
+  M.staff.glow.material.color.setHex(P.kick > 0.15 ? gc : 0x3dffa0); M.staff.gl.color.setHex(P.kick > 0.15 ? gc : 0x3dffa0);
+  M.staff.gl.intensity = 1.6 + P.kick * 3;
+  M.staff.glow.scale.setScalar(0.55 + P.kick * 0.4 + Math.sin(time * 6) * 0.04);
+}
+function hurtPlayer(dmg, from, opt = {}) {
+  const P = player;
+  if (P.dead) return;
+  if (P.invuln > 0) { if (!opt.quiet) floater(V3(P.pos.x, P.pos.y + 2.2, P.pos.z), '闪避', 'miss'); return; }
+  dmg = Math.round(dmg);
+  P.hp -= dmg; P.lastHurt = time;
+  $('hurt').style.opacity = opt.quiet ? 0.35 : 0.8; if (!opt.quiet) addShake(0.4); sfx('hurt', opt.quiet ? 0.4 : 1);
+  floater(V3(P.pos.x, P.pos.y + 2.2, P.pos.z), '-' + dmg, 'ph');
+  if (from) { const d = V3(P.pos.x - from.x, 0, P.pos.z - from.z).normalize(); P.vel.addScaledVector(d, opt.knock || 5); }
+  if (P.hp <= 0) { P.hp = 0; P.dead = true; P.deadT = 0; lmb = rmb = false; $('death').style.display = 'flex'; sfx('die', 1); }
+}
+function respawn() {
+  const P = player; P.dead = false; P.hp = P.maxHp; P.invuln = 2.5; mage.body.rotation.x = 0;
+  for (const st of equip) if (st) { st.mana = st.manaMax; st.cd = 0; st.idx = 0; }
+  $('death').style.display = 'none';
+  for (const o of orcs) if (!o.dead && Math.hypot(o.pos.x - P.pos.x, o.pos.z - P.pos.z) < 8) { o.knock.set(o.pos.x - P.pos.x, 0, o.pos.z - P.pos.z).setLength(14); o.interrupt(); }
+  for (let i = 0; i < 40; i++) { const r = rdir(); fx.emit(P.pos.x, P.pos.y + 1, P.pos.z, r[0] * 4, Math.abs(r[1]) * 4, r[2] * 4, 0.7, 0.4, 0.05, [0.6, 1, 0.7], [0.1, 0.6, 0.3], 0, 3); }
+}
+
+// ============ 施法：读取法杖卡组 ============
+function drawKey(st) { while (st.idx < st.slots) { const k = st.cards[st.idx++]; if (k) return k; } return null; }
+function makeSpec(key, st) {
+  const C = CARDS[key];
+  return { key, el: C.el, dmg: C.dmg, speed: (C.speed || 0) * (1 + (st.aff.speed || 0) / 100), life: C.life || 1, size: C.size || 1,
+    aoe: C.aoe || 0, pierce: C.pierce || 0, chain: C.chain || 0, homing: C.homing || 0, bounce: 0, split: 0, nova: C.nova || 0, payload: [], st };
+}
+const cloneSpec = s => Object.assign({}, s, { payload: s.payload.map(cloneSpec) });
+function drawSpell(st, ctx, depth = 0) {
+  if (depth > 14) return [];
+  const key = drawKey(st); if (!key) return [];
+  const C = CARDS[key]; ctx.cost += C.cost; ctx.delay += C.delay || 0;
+  if (C.type === 'proj') return [makeSpec(key, st)];
+  if (C.type === 'mod') { const r = drawSpell(st, ctx, depth + 1); r.forEach(C.apply); return r; }
+  if (C.type === 'multi') { let r = []; for (let i = 0; i < C.n; i++) r = r.concat(drawSpell(st, ctx, depth + 1)); return r; }
+  if (C.type === 'payload') {
+    const r = drawSpell(st, ctx, depth + 1), pl = drawSpell(st, ctx, depth + 1);
+    for (const s of r) s.payload = s.payload.concat(pl.map(cloneSpec));
+    return r;
+  }
+  return [];
+}
+const _tip = V3();
+function tryCast(st) {
+  if (st.cd > 0) return;
+  const P = player, save = st.idx, ctx = { cost: 0, delay: 0 };
+  const specs = drawSpell(st, ctx);
+  if (st.always) specs.push(makeSpec(st.always, st));
+  if (ctx.cost > st.mana) {
+    st.idx = save; st.cd = 0.25; st.cdMax = 0.25;
+    if (P.noMpT <= 0) { P.noMpT = 1; floater(V3(P.pos.x, P.pos.y + 2.4, P.pos.z), '法力不足', 'info'); sfx('empty'); }
+    return;
+  }
+  st.mana -= ctx.cost;
+  let rest = false; for (let i = st.idx; i < st.slots; i++) if (st.cards[i]) { rest = true; break; }
+  const delay = Math.max(0.04, st.delay + ctx.delay);
+  if (!rest) { st.idx = 0; st.cd = delay + st.reload; st.reloading = true; } else { st.cd = delay; st.reloading = false; }
+  st.cdMax = st.cd; st.flash = 1;
+  if (!specs.length) { sfx('empty', 0.5); return; }
+  const ang = Math.atan2(aim.point.x - P.pos.x, aim.point.z - P.pos.z);
+  const origin = { x: P.pos.x + Math.sin(ang) * 0.6, z: P.pos.z + Math.cos(ang) * 0.6 };
+  fireSpecs(specs, origin, ang, st.spread, null);
+  P.kick = 1; P.faceT = 0.6; P.lastEl = specs[0].el;
+  mage.staff.tip.getWorldPosition(_tip);
+  const E = EL[specs[0].el];
+  for (let i = 0; i < 12; i++) { const r = rdir(); fx.emit(_tip.x, _tip.y, _tip.z, r[0] * 2 + Math.sin(ang) * 4, r[1] * 2, r[2] * 2 + Math.cos(ang) * 4, rand(0.12, 0.25), 0.35, 0.04, E.c0, E.c1, 0, 4); }
+  const el0 = specs[0].el;
+  sfx(specs.some(s => s.key === 'fireball') ? 'fire' : el0 === 'ice' ? 'iceShot' : el0 === 'bolt' ? 'zap' : el0 === 'arcane' ? 'arcane' : 'spark', 0.7);
+}
+function fireSpecs(specs, origin, ang, spreadDeg, ignore) {
+  const n = specs.length, step = n > 1 ? Math.min(0.13, 0.9 / n) : 0;
+  specs.forEach((s, i) => {
+    const a = ang + (i - (n - 1) / 2) * step + rand(-1, 1) * spreadDeg * Math.PI / 180;
+    if (s.nova) doNova(s, origin, ignore);
+    else spawnProj(s, origin, a, ignore);
+  });
+}
+
+// ============ 投射物 ============
+const projs = [];
+const elGlow = {}, coreGlow = glowMat(0xffffff);
+for (const k in EL) elGlow[k] = glowMat(EL[k].color);
+function spawnProj(s, origin, ang, ignore) {
+  if (projs.length > 320) return;
+  const p = { s, x: origin.x, z: origin.z, ang, life: 0, hit: new Set(ignore ? [ignore] : []), pierce: s.pierce, bounce: s.bounce, blob: null, spr: null, core: null, light: null };
+  const y = H(p.x, p.z) + 1.1;
+  if (s.aoe || s.size >= 1.2) {
+    p.blob = makeBlob(EL[s.el].blob); p.blob.g.scale.setScalar(0.2 * s.size); p.blob.g.position.set(p.x, y, p.z); scene.add(p.blob.g);
+    p.light = grabLight(); if (p.light) { p.light.l.color.setHex(EL[s.el].color); p.light.l.intensity = 18; }
+  } else {
+    p.spr = new THREE.Sprite(elGlow[s.el]); p.spr.scale.setScalar(1.1 * s.size);
+    p.core = new THREE.Sprite(coreGlow); p.core.scale.setScalar(0.4 * s.size);
+    p.spr.position.set(p.x, y, p.z); p.core.position.copy(p.spr.position); scene.add(p.spr, p.core);
+  }
+  projs.push(p);
+}
+function removeProj(i) {
+  const p = projs[i];
+  if (p.blob) { scene.remove(p.blob.g); p.blob.dispose(); }
+  if (p.spr) scene.remove(p.spr, p.core);
+  if (p.light) { p.light.l.intensity = 0; p.light.busy = false; }
+  projs.splice(i, 1);
+}
+function nearestOrc(x, z, maxD, exclude, fwdAng = null) {
+  let best = null, bd = maxD * maxD;
+  for (const o of orcs) {
+    if (o.dead || (exclude && exclude.has(o))) continue;
+    const dx = o.pos.x - x, dz = o.pos.z - z, d2 = dx * dx + dz * dz;
+    if (d2 >= bd) continue;
+    if (fwdAng !== null && Math.abs(wrapAngle(Math.atan2(dx, dz) - fwdAng)) > 1.8) continue;
+    bd = d2; best = o;
+  }
+  return best;
+}
+function updateProjs(dt) {
+  for (let i = projs.length - 1; i >= 0; i--) {
+    const p = projs[i], s = p.s; p.life += dt;
+    if (s.homing) {
+      const t = nearestOrc(p.x, p.z, 11, p.hit, p.ang);
+      if (t) { const want = Math.atan2(t.pos.x - p.x, t.pos.z - p.z); p.ang += clamp(wrapAngle(want - p.ang), -s.homing * dt, s.homing * dt); }
+    }
+    const steps = Math.max(1, Math.ceil(s.speed * dt / 0.35));
+    let done = false;
+    for (let k = 0; k < steps && !done; k++) {
+      p.x += Math.sin(p.ang) * s.speed * dt / steps; p.z += Math.cos(p.ang) * s.speed * dt / steps;
+      for (const o of orcs) {
+        if (o.dead || p.hit.has(o)) continue;
+        const dx = o.pos.x - p.x, dz = o.pos.z - p.z, rr = o.hitR * 0.8 + 0.15 * s.size;
+        if (dx * dx + dz * dz < rr * rr) { if (projHitOrc(p, o)) { done = true; break; } }
+      }
+      if (done) break;
+      for (const c of colliders) {
+        const dx = p.x - c.x, dz = p.z - c.z;
+        if (dx * dx + dz * dz < (c.r + 0.1) ** 2 && c.h > 1) { projEnd(p, 'wall'); done = true; break; }
+      }
+    }
+    if (!done && p.life > s.life) { projEnd(p, 'expire'); done = true; }
+    const y = H(p.x, p.z) + 1.1, E = EL[s.el];
+    if (p.blob) {
+      p.blob.g.position.set(p.x, y, p.z); p.blob.update(dt, 2.5); p.blob.glow.scale.setScalar(3.2 + Math.sin(time * 40 + i) * 0.3);
+      if (p.light) { p.light.l.position.set(p.x, y, p.z); p.light.l.intensity = 16 + Math.random() * 6; }
+    } else { p.spr.position.set(p.x, y, p.z); p.core.position.set(p.x, y, p.z); }
+    const bx = -Math.sin(p.ang), bz = -Math.cos(p.ang), nT = p.blob ? 5 : 2;
+    for (let k = 0; k < nT; k++) {
+      const r = rdir(), o = Math.random() * 0.4;
+      fx.emit(p.x + bx * o + r[0] * 0.06, y + r[1] * 0.06, p.z + bz * o + r[2] * 0.06, r[0] * 0.6 + bx * 2, r[1] * 0.6 + (s.el === 'fire' ? 0.6 : 0), r[2] * 0.6 + bz * 2,
+        rand(0.15, 0.3) * (p.blob ? 1.4 : 1), 0.45 * s.size, 0.04, E.c0, E.c1, 0, 1);
+    }
+    if (done) removeProj(i);
+  }
+}
+function triggerPayload(p, o, wall) {
+  if (!p.s.payload.length) return;
+  const ang = wall ? p.ang + Math.PI : p.ang;
+  const ox = p.x + Math.sin(ang) * (wall ? 0.4 : 0), oz = p.z + Math.cos(ang) * (wall ? 0.4 : 0);
+  fireSpecs(p.s.payload.map(cloneSpec), { x: ox, z: oz }, ang, 4, o);
+}
+// 返回 true 表示投射物结束
+function projHitOrc(p, o) {
+  const s = p.s; p.hit.add(o);
+  if (s.aoe) { explodeAoE(p, o); triggerPayload(p, o); return true; }
+  hitOrc(o, s, p.ang);
+  if (s.chain) chainLightning(o, s, s.chain, new Set([o]));
+  if (s.split) {
+    for (let k = 0; k < s.split; k++) {
+      const c = cloneSpec(s); c.dmg *= 0.5; c.size *= 0.65; c.split = 0; c.payload = []; c.pierce = 0; c.bounce = 0; c.life = 0.45; c.chain = s.chain ? 1 : 0;
+      spawnProj(c, { x: p.x, z: p.z }, p.ang + (k - (s.split - 1) / 2) * 0.65, o);
+    }
+  }
+  triggerPayload(p, o);
+  if (p.pierce > 0) { p.pierce--; return false; }
+  if (p.bounce > 0) {
+    const n = nearestOrc(p.x, p.z, 12, p.hit);
+    if (n) { p.bounce--; p.ang = Math.atan2(n.pos.x - p.x, n.pos.z - p.z); p.life = Math.min(p.life, s.life * 0.4); return false; }
+  }
+  return true;
+}
+function projEnd(p, why) {
+  if (p.s.aoe) explodeAoE(p, null);
+  else burstSmall(V3(p.x, H(p.x, p.z) + 1.1, p.z), p.s.el);
+  if (why === 'wall') triggerPayload(p, null, true);
+}
+
+// ============ 爆炸 / 视觉 ============
+const rings = [];
+const ringGeo = new THREE.RingGeometry(0.75, 1, 40); ringGeo.rotateX(-Math.PI / 2);
+function ring(p, color, max, dur = 0.35) {
+  const rm = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  rm.position.copy(p); scene.add(rm); rings.push({ m: rm, t: 0, dur, max });
+}
+function flashSprite(p, color, max, dur = 0.25) { const sp = new THREE.Sprite(glowMat(color)); sp.position.copy(p); scene.add(sp); rings.push({ m: sp, t: 0, dur, max }); }
+function updateRings(dt) {
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const r = rings[i]; r.t += dt; const k = r.t / r.dur;
+    if (k >= 1) { scene.remove(r.m); r.m.material.dispose(); rings.splice(i, 1); continue; }
+    r.m.scale.setScalar(0.2 + r.max * (1 - (1 - k) ** 3)); r.m.material.opacity = 1 - k;
+  }
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const f = flashes[i]; f.t += dt; const k = f.t / f.dur;
+    if (k >= 1) { f.e.l.intensity = 0; f.e.busy = false; flashes.splice(i, 1); continue; }
+    f.e.l.intensity = f.peak * (1 - k) ** 2;
+  }
+}
+function burst(p, el, r) {
+  const E = EL[el];
+  const n = Math.round(25 + r * 10);
+  for (let i = 0; i < n; i++) { const d = rdir(), s = rand(1.5, 3.2) * r; fx.emit(p.x, p.y, p.z, d[0] * s, d[1] * s * 0.6 + 1, d[2] * s, rand(0.3, 0.6), rand(0.7, 1.2) * Math.min(1.6, r / 2), 0.12, E.c0, E.c1, -0.5, 3.5); }
+  for (let i = 0; i < 14; i++) { const d = rdir(), s = rand(3, 8); fx.emit(p.x, p.y, p.z, d[0] * s, Math.abs(d[1]) * s + 2, d[2] * s, rand(0.6, 1.1), 0.12, 0.04, E.c0, E.c1, 10, 1); }
+  ring(V3(p.x, H(p.x, p.z) + 0.15, p.z), E.color, r * 1.1);
+  flashSprite(p, E.color, r * 1.8);
+  lightFlash(p, 50 + r * 12, 0.35, E.color);
+}
+function burstSmall(p, el) {
+  const E = EL[el];
+  for (let i = 0; i < 8; i++) { const d = rdir(), s = rand(1, 3); fx.emit(p.x, p.y, p.z, d[0] * s, d[1] * s, d[2] * s, rand(0.15, 0.3), 0.3, 0.04, E.c0, E.c1, 0, 3); }
+}
+function explodeAoE(p, direct) {
+  const s = p.s, c = V3(p.x, H(p.x, p.z) + 1.1, p.z);
+  burst(c, s.el, s.aoe);
+  addShake(0.22 * distVol(c)); sfx(s.el === 'ice' ? 'iceBoom' : 'boom', distVol(c) * 0.8);
+  let any = false;
+  for (const o of orcs) {
+    if (o.dead) continue;
+    const d = Math.hypot(o.pos.x - c.x, o.pos.z - c.z);
+    if (o === direct || d < s.aoe + o.r) { hitOrc(o, s, Math.atan2(o.pos.x - c.x, o.pos.z - c.z), o === direct ? 1 : 0.75, { knock: 4 }); any = true; }
+  }
+  if (any) hitMarkT = 0.15;
+}
+function doNova(s, origin, ignore) {
+  const c = V3(origin.x, H(origin.x, origin.z) + 1, origin.z), R = s.nova;
+  burst(c, 'ice', R * 0.8);
+  for (let i = 0; i < 60; i++) { const a = Math.random() * TAU, sp = rand(6, 11); dust.emit(c.x, c.y - 0.6, c.z, Math.cos(a) * sp, rand(0.5, 2), Math.sin(a) * sp, rand(0.35, 0.6), 0.5, 1.4, [0.9, 0.97, 1], [0.6, 0.85, 1], 0, 4, 0.8); }
+  sfx('freeze', distVol(c)); addShake(0.2 * distVol(c));
+  for (const o of orcs) {
+    if (o.dead) continue;
+    const d = Math.hypot(o.pos.x - c.x, o.pos.z - c.z);
+    if (d < R + o.r) { hitOrc(o, Object.assign({}, s, { chillAdd: 2 }), Math.atan2(o.pos.x - c.x, o.pos.z - c.z), 1, { knock: 7 }); hitMarkT = 0.15; }
+  }
+}
+const zaps = [];
+const zapMat = new THREE.LineBasicMaterial({ color: 0xe0d4ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+function zap(a, b) {
+  for (let L = 0; L < 2; L++) {
+    const pts = [];
+    for (let i = 0; i <= 8; i++) { const t = i / 8, j = i > 0 && i < 8 ? 0.4 : 0; pts.push(V3(lerp(a.x, b.x, t) + rand(-j, j), lerp(a.y, b.y, t) + rand(-j, j), lerp(a.z, b.z, t) + rand(-j, j))); }
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), zapMat); line.renderOrder = 6; scene.add(line); zaps.push({ line, t: 0.12 });
+  }
+  for (let i = 0; i < 10; i++) { const t = Math.random(); fx.emit(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), rand(-1, 1), rand(-1, 1), rand(-1, 1), 0.2, 0.35, 0.05, EL.bolt.c0, EL.bolt.c1, 0, 2); }
+}
+function updateZaps(dt) { for (let i = zaps.length - 1; i >= 0; i--) { zaps[i].t -= dt; if (zaps[i].t <= 0) { scene.remove(zaps[i].line); zaps[i].line.geometry.dispose(); zaps.splice(i, 1); } } }
+function chainLightning(from, s, n, hitSet) {
+  let cur = from;
+  const cs = Object.assign({}, s, { chain: 0 });
+  for (let i = 0; i < n; i++) {
+    const nx = nearestOrc(cur.pos.x, cur.pos.z, cur.shock > 0 ? 9 : 7, hitSet);
+    if (!nx) break;
+    hitSet.add(nx);
+    zap(cur.center(V3()), nx.center(V3()));
+    hitOrc(nx, cs, Math.atan2(nx.pos.x - cur.pos.x, nx.pos.z - cur.pos.z), 0.8, { knock: 0.5 });
+    cur = nx;
+  }
+  sfx('zap', distVol(from.pos) * 0.6);
+}
+
+// ============ 伤害 / 元素 / 反应 ============
+let hitMarkT = 0;
+const REACT = {
+  steam:    { name: '蒸汽爆炸', color: '#ffffff' },
+  shatter:  { name: '碎冰',     color: '#aef0ff' },
+  overload: { name: '超载',     color: '#ffb070' },
+  superconduct: { name: '超导', color: '#c9b4ff' },
+};
+function reactFloater(o, key) { o.center(_c); floater(V3(_c.x, _c.y + 1.3 * o.scale, _c.z), REACT[key].name + '!', 'react', REACT[key].color); }
+function hitOrc(o, s, ang, mul = 1, opt = {}) {
+  if (o.dead) return;
+  const st = s.st, el = s.el, rmul = 1 + (st.aff.react || 0) / 100;
+  let dmg = s.dmg * mul * (1 + ((st.aff.dmg || 0) + (st.aff[el] || 0)) / 100);
+  let react = null;
+  if (o.frozen > 0) react = el === 'fire' ? 'steam' : 'shatter';
+  else if (el === 'bolt' && o.burn > 0) react = 'overload';
+  else if (el === 'ice' && o.shock > 0) react = 'superconduct';
+  if (o.shock > 0) dmg *= 1.25;
+  if (o.vuln > 0) dmg *= 1.3;
+  const crit = Math.random() < player.crit + (st.aff.crit || 0) / 100;
+  if (crit) dmg *= player.critMul;
+  if (react === 'shatter') { dmg *= 2.5 * rmul; o.unfreeze(true); }
+  if (react === 'superconduct') dmg *= 1.5;
+  damageOrc(o, dmg, ang, { crit, el, knock: opt.knock ?? 1.2 });
+  if (react) { reactFloater(o, react); hitMarkT = 0.2; }
+  if (react === 'steam') {
+    o.unfreeze(false);
+    const c = o.center(V3());
+    for (let i = 0; i < 50; i++) { const d = rdir(), sp = rand(2, 6); dust.emit(c.x, c.y, c.z, d[0] * sp, Math.abs(d[1]) * sp + 1, d[2] * sp, rand(0.9, 1.6), rand(1, 1.6), rand(3, 4.5), [0.95, 0.96, 0.98], [0.75, 0.78, 0.8], -1.5, 2.5, 0.75); }
+    burst(c, 'fire', 2.2); ring(V3(c.x, H(c.x, c.z) + 0.2, c.z), 0xffffff, 3.6, 0.5);
+    reactionBlast(c, 3.4, (30 + s.dmg * 1.6) * rmul, 6);
+    sfx('steam', distVol(c)); addShake(0.35 * distVol(c));
+  } else if (react === 'overload') {
+    o.burn = 0;
+    const c = o.center(V3());
+    burst(c, 'fire', 2.4); burst(c, 'bolt', 2.6);
+    reactionBlast(c, 3.2, (26 + s.dmg * 1.3) * rmul, 11, true);
+    sfx('overload', distVol(c)); addShake(0.4 * distVol(c));
+  } else if (react === 'superconduct') {
+    o.shock = 0;
+    const c = o.center(V3());
+    ring(V3(c.x, H(c.x, c.z) + 0.2, c.z), 0xb8a0ff, 5, 0.45);
+    for (const e of orcs) if (!e.dead && Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < 5.5) { addChill(e, 2); if (e !== o) zap(c, e.center(V3())); }
+    sfx('freeze', distVol(c));
+  } else if (react === 'shatter') {
+    const c = o.center(V3());
+    for (let i = 0; i < 30; i++) { const d = rdir(), sp = rand(3, 8); dust.emit(c.x, c.y, c.z, d[0] * sp, Math.abs(d[1]) * sp + 2, d[2] * sp, rand(0.5, 0.9), 0.22, 0.1, [0.92, 0.98, 1], [0.6, 0.85, 1], 12, 0.5, 0.95); }
+    sfx('shatter', distVol(c));
+  }
+  if (o.dead) return;
+  if (el === 'fire' && react !== 'steam') { o.burnDps = Math.max(o.burn > 0 ? o.burnDps : 0, s.dmg * 0.7 * (1 + (st.aff.fire || 0) / 100)); o.burn = 3; }
+  if (el === 'ice' && react !== 'shatter') addChill(o, s.chillAdd || 1);
+  if (el === 'bolt' && react !== 'overload') o.shock = 3.5;
+}
+function reactionBlast(c, r, dmg, knock, interrupt = false) {
+  for (const o of orcs) {
+    if (o.dead) continue;
+    const d = Math.hypot(o.pos.x - c.x, o.pos.z - c.z);
+    if (d < r + o.r) {
+      damageOrc(o, dmg * (d < r * 0.5 ? 1 : 0.75), Math.atan2(o.pos.x - c.x, o.pos.z - c.z), { knock, el: 'react' });
+      if (interrupt) o.interrupt();
+    }
+  }
+}
+function addChill(o, n) {
+  if (o.frozen > 0 || o.dead) return;
+  o.chill += n; o.chillT = 3.5;
+  const need = o.T.boss ? 12 : 5;
+  if (o.chill >= need) {
+    o.chill = 0; o.frozen = o.T.boss ? 1.3 : 2.4; o.interrupt();
+    if (!o.ice) { o.ice = new THREE.Mesh(iceBlockGeo, iceBlockMat); o.ice.scale.set(0.8 * o.scale, 1.35 * o.scale, 0.8 * o.scale); o.ice.position.y = 1.1 * o.scale; o.root.add(o.ice); }
+    o.ice.visible = true;
+    o.center(_c); floater(V3(_c.x, _c.y + 1 * o.scale, _c.z), '冻结', 'react', '#bff4ff');
+    sfx('freeze', distVol(o.pos));
+  }
+}
+function damageOrc(o, amount, ang, opt = {}) {
+  if (o.dead) return;
+  const dmg = Math.max(1, Math.round(amount));
+  o.hp -= dmg; o.flash = 0.12; o.aggro = true; o.lastHit = time;
+  if (o.state === 'idle') o.state = 'chase';
+  if (ang !== null && ang !== undefined && opt.knock) {
+    const kb = opt.knock / (o.T.boss ? 5 : o.elite ? 2 : 1);
+    o.knock.x += Math.sin(ang) * kb; o.knock.z += Math.cos(ang) * kb;
+  }
+  o.center(_c);
+  const cls = (opt.el && opt.el !== 'react' ? opt.el : '') + (opt.crit ? ' crit' : '') + (opt.dot ? ' dot' : '');
+  floater(V3(_c.x + rand(-0.3, 0.3), _c.y + 0.6 * o.scale, _c.z), (opt.crit ? '暴击 ' : '') + dmg, cls);
+  if (!opt.dot) for (let i = 0; i < 6; i++) { const r = rdir(); dust.emit(_c.x, _c.y, _c.z, r[0] * 3, r[1] * 3 + 1.5, r[2] * 3, rand(0.4, 0.7), 0.16, 0.08, BLOOD0, BLOOD1, 9, 1, 0.9); }
+  if (o.hp <= 0) killOrc(o);
+}
+
+// ============ 地面预警（贴合地形） ============
+const TELE_V = `attribute float aR; attribute float aE; varying float vR; varying float vE;
+void main(){ vR = aR; vE = aE; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const TELE_F = `uniform vec3 uColor; uniform float uProg; uniform float uAlpha; varying float vR; varying float vE;
+void main(){ float edge = smoothstep(0.86, 1.0, vE); float fill = step(vR, uProg);
+  float a = (0.14 + edge * 0.6 + fill * 0.3) * uAlpha; gl_FragColor = vec4(uColor * (1.0 + edge * 0.6 + fill * 0.3), a); }`;
+function makeTele(shape, color = 0xff3a20) {
+  const pos = [], aR = [], aE = [], idx = [];
+  let rows, cols;
+  if (shape.type === 'line') {
+    rows = 16; cols = 4;
+    const sx = Math.sin(shape.ang), sz = Math.cos(shape.ang), px = Math.cos(shape.ang), pz = -Math.sin(shape.ang);
+    for (let i = 0; i <= rows; i++) for (let j = 0; j <= cols; j++) {
+      const t = i / rows, w = j / cols * 2 - 1;
+      const x = shape.x + sx * t * shape.len + px * w * shape.w / 2, z = shape.z + sz * t * shape.len + pz * w * shape.w / 2;
+      pos.push(x, H(x, z) + 0.09, z); aR.push(t); aE.push(Math.max(Math.abs(w), t > 0.97 ? 1 : 0));
+    }
+  } else {
+    const circle = shape.type === 'circle', span = circle ? TAU : shape.half * 2, a0 = circle ? 0 : shape.ang - shape.half;
+    rows = 7; cols = circle ? 44 : 20;
+    for (let i = 0; i <= rows; i++) for (let j = 0; j <= cols; j++) {
+      const r = i / rows, a = a0 + j / cols * span;
+      const x = shape.x + Math.sin(a) * r * shape.r, z = shape.z + Math.cos(a) * r * shape.r;
+      pos.push(x, H(x, z) + 0.09, z); aR.push(r); aE.push(circle ? r : Math.max(r, Math.abs(j / cols * 2 - 1)));
+    }
+  }
+  for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+    const a = i * (cols + 1) + j, b = a + cols + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aR', new THREE.Float32BufferAttribute(aR, 1));
+  g.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1));
+  g.setIndex(idx);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) }, uProg: { value: 0 }, uAlpha: { value: 1 } },
+    vertexShader: TELE_V, fragmentShader: TELE_F, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  }));
+  m.renderOrder = 2; m.frustumCulled = false; scene.add(m);
+  return {
+    m, set(p) { m.material.uniforms.uProg.value = p; }, alpha(a) { m.material.uniforms.uAlpha.value = a; },
+    dispose() { scene.remove(m); g.dispose(); m.material.dispose(); },
+  };
+}
+
+// ============ 半兽人 ============
+const ELITE_AFFIX = ['迅捷', '巨型', '狂怒', '再生'];
+const iceBlockGeo = new THREE.IcosahedronGeometry(1, 1);
+const iceBlockMat = new THREE.MeshStandardMaterial({ color: 0xbfeeff, transparent: true, opacity: 0.55, roughness: 0.08, metalness: 0.1, emissive: 0x2a74b0, emissiveIntensity: 0.7, flatShading: true, depthWrite: false });
+const eliteGlowMat = glowMat(0x5a9aff);
+let danger = 1, kills = 0, bossAlive = false, nextBossAt = 40, spawnT = 6;
+const hpScale = () => 1 + 0.3 * (danger - 1), dmgScale = () => 1 + 0.12 * (danger - 1);
+class Orc {
+  constructor(key, x, z, opt = {}) {
+    const B = ORC_TYPES[key]; this.key = key; this.T = B; this.elite = opt.elite || null;
+    const big = this.elite === '巨型';
+    this.scale = B.scale * (big ? 1.3 : 1);
+    this.P = buildOrc(Object.assign({}, B, { scale: this.scale })); this.root = this.P.root; scene.add(this.root);
+    this.maxHp = Math.round(B.hp * hpScale() * (this.elite ? 2.6 : 1) * (big ? 1.5 : 1)); this.hp = this.maxHp;
+    this.spd = B.speed * (this.elite === '迅捷' ? 1.4 : 1);
+    this.dmgMul = dmgScale() * (big ? 1.3 : 1) * (this.elite ? 1.15 : 1);
+    this.name = this.elite ? `${this.elite} · ${B.name}` : B.name;
+    this.pos = V3(x, H(x, z), z); this.vel = V3(); this.knock = V3();
+    this.facing = Math.random() * TAU; this.state = 'idle'; this.st = 0; this.wt = 1; this.wk = ''; this.lockAng = 0; this.orbTarget = V3();
+    this.atkCd = rand(0.6, 1.6); this.chargeCd = rand(1, 3); this.slamCd = 2;
+    this.wander = null; this.flash = 0; this.stun = 0; this.vuln = 0;
+    this.burn = 0; this.burnDps = 0; this.burnTick = 0.5; this.chill = 0; this.chillT = 0; this.frozen = 0; this.shock = 0;
+    this.dead = false; this.deadT = 0; this.gone = false; this.phase = Math.random() * 10; this.aggro = !!opt.aggro; this.didHit = false;
+    this.r = 0.5 * this.scale; this.hitR = 0.85 * this.scale; this.lastHit = -99; this.emis = ''; this.tele = null; this.ice = null; this.sttStr = null;
+    if (this.elite) { const g = new THREE.Sprite(eliteGlowMat); g.scale.setScalar(3.4 * this.scale); g.position.y = 1.1 * this.scale; this.root.add(g); }
+    const el = document.createElement('div'); el.className = 'ebar' + (B.boss ? ' boss' : this.elite ? ' elite' : '');
+    el.innerHTML = `<div class="nm">${this.name}</div><div class="bg"><div class="fg"></div></div><div class="stt"></div>`;
+    barsLayer.appendChild(el); this.bar = el; this.barFg = el.querySelector('.fg'); this.barSt = el.querySelector('.stt');
+    this.root.position.copy(this.pos);
+    for (let i = 0; i < 16; i++) dust.emit(x + rand(-1, 1), this.pos.y + 0.2, z + rand(-1, 1), rand(-1, 1), rand(0.5, 2), rand(-1, 1), rand(0.6, 1.1), 0.6, 1.2, [0.35, 0.3, 0.22], [0.25, 0.22, 0.18], 0, 2, 0.5);
+  }
+  center(out) { return out.set(this.pos.x, this.pos.y + 1.2 * this.scale, this.pos.z); }
+  remove() { this.gone = true; this.clearTele(); scene.remove(this.root); if (this.bar.parentNode) this.bar.remove(); }
+  clearTele() { if (this.tele) { this.tele.dispose(); this.tele = null; } }
+  interrupt() {
+    if (this.state === 'windup' || this.state === 'charging') { this.clearTele(); this.state = 'chase'; this.atkCd = 0.8; }
+  }
+  unfreeze(shattered) { this.frozen = 0; if (this.ice) this.ice.visible = false; if (shattered) this.stun = 0.3; }
+  startWind(kind, t, toAng, d) {
+    const T = this.T;
+    this.state = 'windup'; this.wk = kind; this.st = this.wt = t * (this.elite === '迅捷' ? 0.8 : 1);
+    this.lockAng = toAng; this.facing = toAng;
+    const col = T.boss ? 0xff2a6a : 0xff3a20;
+    if (kind === 'swing') this.tele = makeTele({ type: 'sector', x: this.pos.x, z: this.pos.z, ang: toAng, r: T.reach * (this.scale / T.scale) + 0.5, half: 0.8 }, col);
+    else if (kind === 'slam') this.tele = makeTele({ type: 'circle', x: this.pos.x, z: this.pos.z, r: 5.2 }, col);
+    else if (kind === 'charge') { this.chargeLen = T.boss ? 15 : 11; this.tele = makeTele({ type: 'line', x: this.pos.x, z: this.pos.z, ang: toAng, len: this.chargeLen, w: 1.8 * this.scale }, col); }
+    else if (kind === 'orb') { this.orbTarget.set(player.pos.x + player.vel.x * 0.4, 0, player.pos.z + player.vel.z * 0.4); this.tele = makeTele({ type: 'circle', x: this.orbTarget.x, z: this.orbTarget.z, r: 2.3 }, 0x8aff30); }
+    if (kind !== 'orb') sfx('roar', distVol(this.pos) * 0.25);
+  }
+  act(d, toAng) {
+    const T = this.T, dmg = T.dmg * this.dmgMul * (this.elite === '狂怒' && this.hp < this.maxHp / 2 ? 1.3 : 1);
+    const kind = this.wk; this.clearTele();
+    if (kind === 'swing') {
+      sfx('swing', distVol(this.pos));
+      if (d < T.reach * (this.scale / T.scale) + 0.8 && Math.abs(wrapAngle(toAng - this.lockAng)) < 0.9) hurtPlayer(dmg * rand(0.9, 1.1), this.pos);
+      this.state = 'recover'; this.st = 0.5;
+    } else if (kind === 'slam') {
+      addShake(0.5 * distVol(this.pos)); sfx('boom', distVol(this.pos));
+      for (let i = 0; i < 50; i++) { const a = Math.random() * TAU, sp = rand(5, 10); dust.emit(this.pos.x, this.pos.y + 0.2, this.pos.z, Math.cos(a) * sp, rand(1, 3), Math.sin(a) * sp, rand(0.5, 0.9), 0.6, 1.6, [0.4, 0.34, 0.24], [0.3, 0.26, 0.2], 4, 3, 0.6); }
+      ring(V3(this.pos.x, this.pos.y + 0.2, this.pos.z), 0xffa060, 5.4, 0.4);
+      if (d < 5.4) hurtPlayer(dmg * 1.2, this.pos, { knock: 10 });
+      this.state = 'recover'; this.st = 1.0;
+    } else if (kind === 'charge') {
+      this.state = 'charging'; this.st = this.chargeLen / 19; this.didHit = false; sfx('roar', distVol(this.pos) * 0.6);
+    } else if (kind === 'orb') {
+      spawnEnemyOrb(this, this.orbTarget);
+      this.state = 'recover'; this.st = 0.6;
+    }
+  }
+  update(dt) {
+    const T = this.T, P = this.P;
+    if (this.dead) {
+      this.deadT += dt; const k = Math.min(1, this.deadT / 0.55);
+      P.body.rotation.x = -k * k * Math.PI / 2 * 0.97;
+      if (this.deadT > 2.4) this.root.position.y -= dt * 0.6;
+      if (this.deadT > 4) this.remove();
+      this.setEmissive(0, 0, 0); return;
+    }
+    const dx = player.pos.x - this.pos.x, dz = player.pos.z - this.pos.z, d = Math.hypot(dx, dz), toAng = Math.atan2(dx, dz);
+    this.atkCd -= dt; this.chargeCd -= dt; this.slamCd -= dt; this.flash -= dt; this.stun -= dt; this.vuln -= dt;
+    // 状态
+    if (this.burn > 0) {
+      this.burn -= dt; this.burnTick -= dt;
+      if (Math.random() < 0.7) fx.emit(this.pos.x + rand(-.4, .4) * this.scale, this.pos.y + rand(0.3, 1.9) * this.scale, this.pos.z + rand(-.4, .4) * this.scale, 0, rand(1, 2.5), 0, rand(0.3, 0.5), 0.45 * this.scale, 0.05, FIRE0, FIRE1, 0, 1);
+      if (this.burnTick <= 0) { this.burnTick = 0.5; damageOrc(this, this.burnDps * 0.5, null, { dot: true, el: 'fire' }); if (this.dead) return; }
+    }
+    if (this.chillT > 0) { this.chillT -= dt; if (this.chillT <= 0) this.chill = 0; }
+    if (this.shock > 0) {
+      this.shock -= dt;
+      if (Math.random() < dt * 14) { const c = this.center(V3()); fx.emit(c.x + rand(-.5, .5) * this.scale, c.y + rand(-.8, .8) * this.scale, c.z + rand(-.5, .5) * this.scale, rand(-2, 2), rand(-2, 2), rand(-2, 2), 0.12, 0.3, 0.05, EL.bolt.c0, EL.bolt.c1, 0, 0); }
+    }
+    if (this.elite === '再生' && time - this.lastHit > 2) this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.04 * dt);
+    let want = 0, wantAng = this.facing;
+    if (this.frozen > 0) {
+      this.frozen -= dt; if (this.frozen <= 0) this.unfreeze(false);
+      this.vel.set(0, 0, 0);
+    } else if (this.stun > 0) {
+      want = 0;
+    } else {
+      const slowF = 1 - Math.min(0.5, this.chill * 0.1);
+      const enr = this.elite === '狂怒' && this.hp < this.maxHp / 2 ? 1.4 : 1;
+      const spd = this.spd * slowF * enr;
+      if (player.dead && this.state !== 'idle') { this.clearTele(); this.state = 'idle'; }
+      switch (this.state) {
+        case 'idle':
+          this.st -= dt;
+          if (!this.wander || this.st <= 0) { this.wander = { x: this.pos.x + rand(-7, 7), z: this.pos.z + rand(-7, 7) }; this.st = rand(2, 5); }
+          { const wx = this.wander.x - this.pos.x, wz = this.wander.z - this.pos.z;
+            if (wx * wx + wz * wz > 0.5) { wantAng = Math.atan2(wx, wz); want = 1.2; } }
+          if (!player.dead && (d < 22 || this.aggro)) { this.state = 'chase'; if (!this.aggro) { this.aggro = true; sfx('roar', distVol(this.pos) * 0.5); } }
+          break;
+        case 'chase':
+          wantAng = toAng;
+          if (T.ai === 'caster') {
+            want = d > 12 ? spd : d < 7 ? -spd * 0.8 : 0;
+            if (this.atkCd <= 0 && d < 17) this.startWind('orb', T.wind, toAng, d);
+          } else {
+            want = d > T.reach * 0.8 ? spd : 0;
+            if (T.ai === 'charger' && this.chargeCd <= 0 && this.atkCd <= 0 && d > 4 && d < 11) this.startWind('charge', 0.8, toAng, d);
+            else if (T.ai === 'boss' && this.slamCd <= 0 && this.atkCd <= 0 && d < 5) { this.startWind('slam', 1.05, toAng, d); this.slamCd = rand(5, 7); }
+            else if (T.ai === 'boss' && this.chargeCd <= 0 && d > 7 && d < 16) this.startWind('charge', 1.0, toAng, d);
+            else if (d < T.reach * (this.scale / T.scale) && this.atkCd <= 0) this.startWind('swing', T.wind, toAng, d);
+          }
+          if (d > 60) { this.state = 'idle'; this.aggro = false; }
+          break;
+        case 'windup':
+          this.st -= dt * slowF;
+          if (this.wk === 'orb') wantAng = toAng; else wantAng = this.lockAng;
+          if (this.tele) this.tele.set(1 - Math.max(0, this.st) / this.wt);
+          if (this.st <= 0) this.act(d, toAng);
+          break;
+        case 'charging': {
+          wantAng = this.lockAng; this.facing = this.lockAng;
+          this.st -= dt;
+          if (!this.didHit && d < this.r + 0.6) { this.didHit = true; hurtPlayer(T.dmg * this.dmgMul * 1.2, this.pos, { knock: 12 }); }
+          if (Math.random() < 0.6) dust.emit(this.pos.x, this.pos.y + 0.15, this.pos.z, rand(-1, 1), rand(0.5, 1.5), rand(-1, 1), 0.6, 0.5, 1.2, [0.4, 0.34, 0.24], [0.3, 0.26, 0.2], 0, 2, 0.5);
+          if (this.st <= 0) { this.state = 'recover'; this.st = 0.9; this.vuln = 0.9; this.chargeCd = rand(4, 6); }
+          break;
+        }
+        case 'recover':
+          this.st -= dt * slowF;
+          if (this.st <= 0) { this.state = 'chase'; this.atkCd = rand(0.6, 1.4) * (this.elite === '迅捷' ? 0.7 : 1); }
+          break;
+      }
+      if (this.state === 'charging') { this.vel.set(Math.sin(this.lockAng) * 19, 0, Math.cos(this.lockAng) * 19); }
+      else {
+        if (this.state !== 'windup' || this.wk === 'orb') this.facing = dampAngle(this.facing, wantAng, 8, dt);
+        const mv = want >= 0 ? this.facing : this.facing;
+        const tvx = Math.sin(this.state === 'idle' ? wantAng : mv) * want, tvz = Math.cos(this.state === 'idle' ? wantAng : mv) * want;
+        this.vel.x = damp(this.vel.x, tvx, 8, dt); this.vel.z = damp(this.vel.z, tvz, 8, dt);
+      }
+    }
+    this.knock.multiplyScalar(Math.exp(-6 * dt));
+    this.pos.x += (this.vel.x + this.knock.x) * dt; this.pos.z += (this.vel.z + this.knock.z) * dt;
+    for (const o of orcs) {
+      if (o === this || o.dead) continue;
+      const ex = this.pos.x - o.pos.x, ez = this.pos.z - o.pos.z, rr = this.r + o.r, d2 = ex * ex + ez * ez;
+      if (d2 < rr * rr && d2 > 1e-6) { const dd = Math.sqrt(d2), k = (rr - dd) / dd * 0.5; this.pos.x += ex * k; this.pos.z += ez * k; }
+    }
+    if (!player.dead && this.state !== 'charging') {
+      const rr = this.r + 0.4;
+      if (d < rr && d > 1e-4) { const k = (rr - d) / d; this.pos.x -= dx * k * 0.5; this.pos.z -= dz * k * 0.5; player.pos.x += dx * k * 0.5; player.pos.z += dz * k * 0.5; }
+    }
+    const bx = this.pos.x, bz = this.pos.z;
+    collidePos(this.pos, this.r);
+    if (this.state === 'charging' && Math.hypot(this.pos.x - bx, this.pos.z - bz) > 0.02) {
+      // 冲锋撞上树/石头：眩晕 + 破绽
+      this.state = 'recover'; this.st = 2.2; this.stun = 2.2; this.vuln = 2.2; this.chargeCd = rand(4, 6); this.vel.set(0, 0, 0);
+      this.center(_c); floater(V3(_c.x, _c.y + 1.2 * this.scale, _c.z), '撞晕！', 'react', '#ffe08a');
+      addShake(0.3 * distVol(this.pos)); sfx('stun', distVol(this.pos));
+      for (let i = 0; i < 20; i++) { const r = rdir(); dust.emit(this.pos.x, this.pos.y + 1.5, this.pos.z, r[0] * 3, Math.abs(r[1]) * 3, r[2] * 3, 0.7, 0.3, 0.8, [0.5, 0.4, 0.25], [0.3, 0.25, 0.2], 6, 1, 0.8); }
+    }
+    this.pos.y = H(this.pos.x, this.pos.z);
+    if (this.frozen <= 0) this.animate(dt);
+    else { this.root.position.copy(this.pos); this.setEmissive(0.1, 0.3, 0.55); }
+  }
+  setEmissive(r, g, b) {
+    const key = (r * 100 | 0) + ',' + (g * 100 | 0) + ',' + (b * 100 | 0); if (key === this.emis) return; this.emis = key;
+    for (const m of this.P.mats) m.emissive.setRGB(r, g, b);
+  }
+  animate(dt) {
+    const P = this.P;
+    this.root.position.copy(this.pos); this.root.rotation.y = this.facing;
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    this.phase += dt * sp * 2.1 / this.scale;
+    const s = Math.sin(this.phase), am = Math.min(sp / 3, 1);
+    P.legL.rotation.x = s * 0.6 * am; P.legR.rotation.x = -s * 0.6 * am;
+    P.body.position.y = Math.abs(Math.cos(this.phase)) * 0.06 * am;
+    const st = this.state, wk = this.wk;
+    let shx = -0.35 + s * 0.35 * am, fx_ = -0.5, tx = 0.12 * am, lx = -s * 0.4 * am, k = 10;
+    if (st === 'windup' && (wk === 'swing' || wk === 'slam')) { shx = wk === 'slam' ? -3.0 : -2.8; fx_ = -0.7; tx = -0.25; lx = wk === 'slam' ? -3.0 : -0.9; k = 8; }
+    else if (st === 'windup' && wk === 'charge') { shx = -0.6; tx = 0.5; lx = -0.4; k = 8; }
+    else if (st === 'windup' && wk === 'orb') { shx = -2.6; fx_ = -0.3; lx = -2.4; tx = -0.2; k = 6; }
+    else if (st === 'charging') { shx = -1.2; tx = 0.6; lx = -1.2; k = 20; }
+    else if (st === 'recover') { shx = -0.3; fx_ = -0.2; tx = 0.25; k = 5; }
+    P.armR.sh.rotation.x = damp(P.armR.sh.rotation.x, shx, k, dt);
+    P.armR.fore.rotation.x = damp(P.armR.fore.rotation.x, fx_, k, dt);
+    P.armL.sh.rotation.x = damp(P.armL.sh.rotation.x, lx, 10, dt);
+    P.armL.fore.rotation.x = -0.4;
+    P.torso.rotation.x = damp(P.torso.rotation.x, tx, k, dt);
+    P.head.rotation.x = Math.sin(time * 3 + this.phase) * 0.05;
+    if (this.stun > 0) { P.torso.rotation.x = damp(P.torso.rotation.x, -0.35, 20, dt); P.head.rotation.z = Math.sin(time * 9) * 0.25; } else P.head.rotation.z = 0;
+    const fl = this.flash > 0 ? this.flash / 0.12 : 0;
+    let r = 0, g = 0, b = 0;
+    if (this.burn > 0) { const v = 0.18 + Math.sin(time * 25) * 0.06; r = v; g = v * 0.35; b = v * 0.1; }
+    if (this.chill > 0) { const v = this.chill * 0.06; r = Math.max(r, v * 0.2); g = Math.max(g, v * 0.6); b = Math.max(b, v * 1.4); }
+    if (this.shock > 0 && Math.sin(time * 40) > 0.3) { r = Math.max(r, 0.25); g = Math.max(g, 0.15); b = Math.max(b, 0.5); }
+    if (this.vuln > 0) { const v = 0.15 + Math.sin(time * 14) * 0.1; r = Math.max(r, v); g = Math.max(g, v * 0.8); }
+    if (fl > 0) { r = Math.max(r, fl * 0.9); g = Math.max(g, fl * 0.8); b = Math.max(b, fl * 0.7); }
+    this.setEmissive(r, g, b);
+  }
+}
+function killOrc(o) {
+  o.hp = 0; o.dead = true; o.deadT = 0; o.state = 'dead'; o.clearTele(); if (o.bar.parentNode) o.bar.remove();
+  if (o.ice) o.ice.visible = false;
+  kills++; $('kills').querySelector('b').textContent = kills;
+  const nd = 1 + Math.floor(kills / 20);
+  if (nd > danger) { danger = nd; banner(`危险度 ${danger}`, '敌人更强 · 掉落更好', 2.5); $('kills').querySelector('.dg').textContent = `危险度 ${danger}`; }
+  sfx('die', distVol(o.pos) * 0.7);
+  o.center(_c);
+  for (let i = 0; i < 24; i++) { const r = rdir(); fx.emit(_c.x, _c.y, _c.z, r[0] * 3, Math.abs(r[1]) * 4, r[2] * 3, rand(0.5, 1), 0.3, 0.05, EMB0, EMB1, 3, 1); }
+  dropLoot(o);
+  if (o.T.boss) { bossAlive = false; banner('击败 半兽勇士', '它掉落了珍贵的法杖', 3); addShake(0.6); }
+}
+function findSpawnPoint(minR, maxR) {
+  const ok = (x, z) => Math.hypot(x, z) <= WORLD_R - 4 && !colliders.some(c => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 1.5) ** 2);
+  for (let i = 0; i < 80; i++) {
+    const a = Math.random() * TAU, r = rand(minR, maxR);
+    const x = player.pos.x + Math.sin(a) * r, z = player.pos.z + Math.cos(a) * r;
+    if (ok(x, z)) return [x, z];
+  }
+  return null;
+}
+function placeNear(cx, cz) {
+  for (let t = 0; t < 20; t++) {
+    const x = cx + rand(-3.5, 3.5), z = cz + rand(-3.5, 3.5);
+    if (Math.hypot(x, z) < WORLD_R - 3 && !colliders.some(c => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 1) ** 2)) return [x, z];
+  }
+  return [cx, cz];
+}
+function spawnPack(cx, cz, aggro = true, forceN = 0) {
+  if (cx === undefined) { const p = findSpawnPoint(26, 38); if (!p) return; [cx, cz] = p; }
+  const n = forceN || Math.min(8, randInt(3, 5) + Math.floor(danger / 2));
+  const elite = Math.random() < 0.14 + danger * 0.02 && kills > 3;
+  for (let i = 0; i < n; i++) {
+    const r = Math.random();
+    const key = kills < 4 ? (r < 0.75 ? 'grunt' : 'warrior') : (r < 0.52 ? 'grunt' : r < 0.78 ? 'warrior' : 'shaman');
+    const [x, z] = placeNear(cx, cz);
+    orcs.push(new Orc(key, x, z, { aggro, elite: elite && i === 0 ? pick(ELITE_AFFIX) : null }));
+  }
+}
+function spawner(dt) {
+  if (player.dead) return;
+  const alive = orcs.filter(o => !o.dead).length;
+  spawnT -= dt;
+  if (alive < 14 + danger * 2 && spawnT <= 0) { spawnT = rand(3.5, 5.5); spawnPack(); }
+  if (kills >= nextBossAt && !bossAlive) {
+    const p = findSpawnPoint(24, 32); if (!p) return;
+    bossAlive = true; nextBossAt += 40;
+    const b = new Orc('hero', p[0], p[1], { aggro: true }); b.state = 'chase'; orcs.push(b);
+    banner('半兽勇士 出现了！', '看清地面红圈：重斧横扫 · 跳劈 · 冲锋', 3); sfx('roar', 1); addShake(0.4);
+  }
+}
+
+// ============ 萨满毒球 / 毒池 ============
+const eShots = [], pools = [];
+function spawnEnemyOrb(o, target) {
+  const b = makeBlob('poison'); b.g.scale.setScalar(0.3); scene.add(b.g);
+  const from = V3(o.pos.x + Math.sin(o.facing) * 0.6, o.pos.y + 1.9 * o.scale, o.pos.z + Math.cos(o.facing) * 0.6);
+  const to = V3(target.x, H(target.x, target.z) + 0.3, target.z);
+  const tele = makeTele({ type: 'circle', x: to.x, z: to.z, r: 2.3 }, 0x8aff30);
+  eShots.push({ b, from, to, t: 0, dur: 0.95, tele, dmg: o.T.dmg * o.dmgMul });
+  sfx('orb', distVol(o.pos));
+}
+function updateEShots(dt) {
+  for (let i = eShots.length - 1; i >= 0; i--) {
+    const e = eShots[i]; e.t += dt; const k = Math.min(1, e.t / e.dur);
+    e.b.g.position.lerpVectors(e.from, e.to, k); e.b.g.position.y += Math.sin(Math.PI * k) * 3.5; e.b.update(dt, 2);
+    e.tele.set(k);
+    const p = e.b.g.position;
+    fx.emit(p.x, p.y, p.z, rand(-.5, .5), rand(-.5, .5), rand(-.5, .5), 0.4, 0.4, 0.05, [0.8, 1, 0.4], [0.2, 0.5, 0], 0, 1);
+    if (k >= 1) {
+      e.tele.dispose(); scene.remove(e.b.g); e.b.dispose(); eShots.splice(i, 1);
+      for (let j = 0; j < 30; j++) { const d = rdir(), s = rand(2, 5); fx.emit(e.to.x, e.to.y, e.to.z, d[0] * s, Math.abs(d[1]) * s, d[2] * s, rand(0.3, 0.6), 0.6, 0.1, [0.8, 1, 0.4], [0.2, 0.5, 0], 6, 2); }
+      sfx('iceBoom', distVol(e.to) * 0.5);
+      if (Math.hypot(player.pos.x - e.to.x, player.pos.z - e.to.z) < 2.3) hurtPlayer(e.dmg, e.to, { knock: 3 });
+      const t = makeTele({ type: 'circle', x: e.to.x, z: e.to.z, r: 2.2 }, 0x6adf20); t.set(1);
+      pools.push({ x: e.to.x, z: e.to.z, r: 2.2, t: 4, tele: t, tick: 0.5, dmg: e.dmg * 0.25 });
+    }
+  }
+  for (let i = pools.length - 1; i >= 0; i--) {
+    const p = pools[i]; p.t -= dt; p.tick -= dt;
+    p.tele.alpha(Math.min(1, p.t) * (0.55 + Math.sin(time * 5) * 0.1));
+    if (Math.random() < dt * 8) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * p.r; dust.emit(p.x + Math.cos(a) * r, H(p.x, p.z) + 0.1, p.z + Math.sin(a) * r, 0, rand(0.3, 0.8), 0, 0.9, 0.3, 0.6, [0.5, 0.9, 0.2], [0.3, 0.6, 0.1], 0, 0, 0.7); }
+    if (p.tick <= 0) { p.tick = 0.5; if (Math.hypot(player.pos.x - p.x, player.pos.z - p.z) < p.r) hurtPlayer(p.dmg, null, { quiet: true }); }
+    if (p.t <= 0) { p.tele.dispose(); pools.splice(i, 1); }
+  }
+}
+
+// ============ 掉落 ============
+const drops = [];
+const lootLayer = barsLayer;
+const cardMats = {};
+const cardGeo = new THREE.PlaneGeometry(0.42, 0.58);
+const staffDropGeo = new THREE.CylinderGeometry(0.03, 0.04, 1.3, 6);
+const beamGeo = new THREE.CylinderGeometry(0.07, 0.07, 7, 8, 1, true); beamGeo.translate(0, 3.5, 0);
+function rollRarity(bonus = 0) {
+  const r = Math.random();
+  const pL = 0.006 + 0.004 * danger + bonus * 0.06, pR = 0.07 + 0.012 * danger + bonus * 0.25, pM = 0.3 + bonus * 0.3;
+  return r < pL ? 3 : r < pL + pR ? 2 : r < pL + pR + pM ? 1 : 0;
+}
+function spawnDrop(kind, data, x, z) {
+  const g = new THREE.Group(); scene.add(g);
+  let rar = 0, label = '';
+  if (kind === 'card') {
+    const C = CARDS[data]; rar = C.rar; label = '法术卡 · ' + C.name;
+    const col = cardColor(data);
+    if (!cardMats[col]) cardMats[col] = new THREE.MeshBasicMaterial({ color: new THREE.Color(col), side: THREE.DoubleSide });
+    g.add(new THREE.Mesh(cardGeo, cardMats[col]));
+    const gl = new THREE.Sprite(glowMat(RAR[rar].hex)); gl.scale.setScalar(1.4); g.add(gl);
+  } else if (kind === 'staff') {
+    rar = data.rar; label = data.name;
+    const m = new THREE.Mesh(staffDropGeo, std(0xd8c8a0)); m.rotation.z = 0.6; g.add(m);
+    const gem = new THREE.Sprite(glowMat(RAR[rar].hex)); gem.scale.setScalar(1.6); gem.position.set(-0.36, 0.5, 0); g.add(gem);
+  } else {
+    const gl = new THREE.Sprite(glowMat(0xff3030)); gl.scale.setScalar(1.1); g.add(gl);
+    const core = new THREE.Sprite(glowMat(0xffc0c0)); core.scale.setScalar(0.4); g.add(core);
+  }
+  let beam = null;
+  if (rar >= 2 || kind === 'staff') {
+    beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: RAR[rar].hex, transparent: true, opacity: rar >= 2 ? 0.4 : 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+    scene.add(beam);
+  }
+  let el = null;
+  if (label) { el = document.createElement('div'); el.className = 'lootlbl'; el.textContent = label; el.style.color = RAR[rar].css; lootLayer.appendChild(el); }
+  const a = Math.random() * TAU, sp = rand(1.5, 3.5);
+  drops.push({ kind, data, g, beam, el, rar, x, z, y: 1.2, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 5, t: 0, landed: false });
+  if (rar >= 2) sfx('rare', 0.8);
+}
+function dropLoot(o) {
+  const x = o.pos.x, z = o.pos.z, boss = o.T.boss, elite = !!o.elite;
+  let nCards = boss ? 3 : elite ? 1 + (Math.random() < 0.5 ? 1 : 0) : (Math.random() < 0.15 ? 1 : 0);
+  if (kills === 1) nCards = Math.max(nCards, 1);
+  for (let i = 0; i < nCards; i++) spawnDrop('card', kills === 1 && i === 0 ? 'double' : pickCard(rollRarity(boss ? 1 : elite ? 0.5 : 0)), x, z);
+  if (boss || (elite && Math.random() < 0.4) || Math.random() < 0.025 || kills === 6) {
+    const rar = boss ? Math.max(2, rollRarity(1.2)) : kills === 6 ? 1 : rollRarity(elite ? 0.6 : 0);
+    spawnDrop('staff', genStaff(rar, danger), x, z);
+  }
+  if (Math.random() < (elite ? 0.6 : 0.07)) spawnDrop('heal', null, x, z);
+}
+function pickup(d) {
+  if (d.kind === 'heal') {
+    const h = Math.round(player.maxHp * 0.18); player.hp = Math.min(player.maxHp, player.hp + h);
+    floater(V3(player.pos.x, player.pos.y + 2.2, player.pos.z), '+' + h, 'info', '#7aff7a'); sfx('pickup', 0.6); return true;
+  }
+  if (d.kind === 'staff' && inv.staves.length >= 12) { if (!d.warned) { d.warned = true; floater(V3(d.x, H(d.x, d.z) + 1.5, d.z), '法杖背包已满', 'info'); } return false; }
+  if (d.kind === 'card') { inv.cards.push(d.data); sortCards(); logMsg('获得 ' + CARDS[d.data].name, RAR[d.rar].css); }
+  else { inv.staves.push(d.data); logMsg('获得 ' + RAR[d.rar].name + '法杖 · ' + d.data.name, RAR[d.rar].css); }
+  newItems++; sfx(d.rar >= 2 ? 'rare' : 'pickup', 0.7);
+  return true;
+}
+function updateDrops(dt) {
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i]; d.t += dt;
+    const gy = H(d.x, d.z);
+    if (!d.landed) {
+      d.vy -= 16 * dt; d.x += d.vx * dt; d.z += d.vz * dt; d.y += d.vy * dt;
+      if (d.y <= 0.5 && d.vy < 0) { d.y = 0.5; d.landed = true; }
+    } else if (!player.dead) {
+      const dx = player.pos.x - d.x, dz = player.pos.z - d.z, dd = Math.hypot(dx, dz);
+      if (dd < 3.2 && d.t > 0.5) { const k = Math.min(1, dt * 9 / Math.max(dd, 0.3)); d.x += dx * k; d.z += dz * k; }
+      if (dd < 0.9 && d.t > 0.5 && pickup(d)) {
+        scene.remove(d.g); if (d.beam) { scene.remove(d.beam); d.beam.material.dispose(); } if (d.el) d.el.remove();
+        drops.splice(i, 1); continue;
+      }
+    }
+    d.g.position.set(d.x, gy + d.y + (d.landed ? Math.sin(d.t * 3) * 0.1 : 0), d.z);
+    d.g.rotation.y += dt * 2;
+    if (d.beam) { d.beam.position.set(d.x, gy, d.z); d.beam.material.opacity = (d.rar >= 2 ? 0.35 : 0.15) + Math.sin(d.t * 4) * 0.06; }
+    if (d.el) {
+      _c.set(d.x, gy + 1.3, d.z);
+      if (_c.distanceTo(camera.position) > 48 || !toScreen(_c, _sp)) d.el.style.display = 'none';
+      else { d.el.style.display = 'block'; d.el.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-100%)`; }
+    }
+  }
+}
+const logEl = $('log');
+function logMsg(text, color) {
+  const el = document.createElement('div'); el.textContent = text; el.style.color = color; logEl.appendChild(el);
+  while (logEl.children.length > 6) logEl.firstChild.remove();
+  setTimeout(() => { el.style.opacity = 0; setTimeout(() => el.remove(), 700); }, 3500);
+}
+
+// ============ 背包 / 法杖工坊 ============
+const inv = { staves: [], cards: [] };
+const equip = [
+  makeStaff({ name: '学徒法杖', rar: 0, slots: 4, delay: 0.17, reload: 0.45, manaMax: 90, regen: 40, spread: 3, cards: ['spark', 'spark', 'ice', 'ice'] }),
+  makeStaff({ name: '骨玉权杖', rar: 1, slots: 4, delay: 0.4, reload: 0.8, manaMax: 120, regen: 32, spread: 1, aff: { fire: 20 }, cards: ['fireball', null, null, null] }),
+];
+inv.cards.push('ice', 'arc', 'payload', 'spark');
+let newItems = 0, sel = null, hudDirty = true;
+const sortCards = () => inv.cards.sort((a, b) => CARD_ORDER.indexOf(a) - CARD_ORDER.indexOf(b));
+sortCards();
+function staffChanged(st) { st.idx = 0; st.cd = Math.max(st.cd, 0.2); st.cdMax = Math.max(st.cdMax, 0.2); hudDirty = true; }
+function toggleInv() {
+  invOpen = !invOpen; lmb = rmb = false; sel = null;
+  $('inv').style.display = invOpen ? 'flex' : 'none'; $('tip').style.display = 'none';
+  if (invOpen) { newItems = 0; renderInv(); }
+  updateBodyClass();
+}
+function renderInv() {
+  for (let s = 0; s < 2; s++) {
+    const st = equip[s];
+    let slots = '';
+    st.cards.forEach((k, i) => {
+      const isSel = sel && sel.src === 'slot' && sel.s === s && sel.i === i;
+      slots += cardHTML(k, isSel ? 'sel' : '', `data-act="slot" data-s="${s}" data-i="${i}" draggable="${k ? 'true' : 'false'}"`);
+    });
+    if (st.always) slots += `<span class="arrow">＋常驻</span>` + cardHTML(st.always, 'always');
+    $('eq' + s).innerHTML = `<div class="eqh"><span class="k">${s ? '右键' : '左键'}</span><span class="nm" style="color:${RAR[st.rar].css}">${st.name}</span><span class="rr" style="color:${RAR[st.rar].css}">${RAR[st.rar].name}</span>
+      <span class="btn gray" data-act="strip" data-s="${s}">卸下全部卡</span></div>
+      <div class="stats">${staffStatsHTML(st)}</div><div class="slots">${slots}</div>`;
+  }
+  $('sbag').innerHTML = inv.staves.length ? inv.staves.map((st, i) => `<div class="sitem"><div class="nm" style="color:${RAR[st.rar].css}">${st.name}　<small style="opacity:.7">${RAR[st.rar].name}</small></div>
+    <div class="ss">${staffStatsHTML(st)}</div><div class="mini">${st.cards.map(k => cardHTML(k, 'sm')).join('')}</div>
+    <span class="btn" data-act="equip" data-i="${i}" data-s="0">装备到左键</span><span class="btn" data-act="equip" data-i="${i}" data-s="1">装备到右键</span><span class="btn gray" data-act="salvage" data-i="${i}">拆解</span></div>`).join('')
+    : '<div class="ss" style="color:#8a7a5a;font-size:12px">击败精英和首领可获得新法杖</div>';
+  $('cbag').innerHTML = inv.cards.map((k, i) => cardHTML(k, sel && sel.src === 'bag' && sel.i === i ? 'sel' : '', `data-act="bag" data-i="${i}" draggable="true"`)).join('')
+    || '<div style="color:#8a7a5a;font-size:12px">空</div>';
+}
+function clickSlot(s, i) {
+  const st = equip[s];
+  if (sel && sel.src === 'bag') {
+    const k = inv.cards.splice(sel.i, 1)[0];
+    if (st.cards[i]) inv.cards.push(st.cards[i]);
+    st.cards[i] = k; sortCards(); sel = null; staffChanged(st);
+  } else if (sel && sel.src === 'slot') {
+    const a = equip[sel.s], t = a.cards[sel.i]; a.cards[sel.i] = st.cards[i]; st.cards[i] = t;
+    staffChanged(a); staffChanged(st); sel = null;
+  } else if (st.cards[i]) sel = { src: 'slot', s, i };
+  renderInv();
+}
+function unequipSlot(s, i) {
+  const st = equip[s];
+  if (st.cards[i]) { inv.cards.push(st.cards[i]); st.cards[i] = null; sortCards(); staffChanged(st); }
+  sel = null; renderInv();
+}
+const invEl = $('inv');
+invEl.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const a = t.dataset.act, s = +t.dataset.s, i = +t.dataset.i;
+  if (a === 'slot') clickSlot(s, i);
+  else if (a === 'bag') { if (sel && sel.src === 'slot') unequipSlot(sel.s, sel.i); else { sel = sel && sel.src === 'bag' && sel.i === i ? null : { src: 'bag', i }; renderInv(); } }
+  else if (a === 'bagzone') { if (sel && sel.src === 'slot') unequipSlot(sel.s, sel.i); }
+  else if (a === 'equip') { const old = equip[s]; equip[s] = inv.staves[i]; inv.staves[i] = old; staffChanged(equip[s]); sel = null; renderInv(); sfx('pickup', 0.5); }
+  else if (a === 'salvage') { const st = inv.staves.splice(i, 1)[0]; for (const k of st.cards) if (k) inv.cards.push(k); sortCards(); sel = null; renderInv(); }
+  else if (a === 'strip') { const st = equip[s]; st.cards.forEach((k, j) => { if (k) inv.cards.push(k); st.cards[j] = null; }); sortCards(); staffChanged(st); sel = null; renderInv(); }
+  else if (a === 'close') toggleInv();
+});
+invEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const t = e.target.closest('[data-act="slot"]'); if (t) unequipSlot(+t.dataset.s, +t.dataset.i);
+});
+invEl.addEventListener('dragstart', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  if (t.dataset.act === 'slot') sel = { src: 'slot', s: +t.dataset.s, i: +t.dataset.i };
+  else if (t.dataset.act === 'bag') sel = { src: 'bag', i: +t.dataset.i };
+  e.dataTransfer.setData('text/plain', 'card'); $('tip').style.display = 'none';
+});
+invEl.addEventListener('dragover', e => { if (e.target.closest('[data-act="slot"],[data-act="bagzone"],[data-act="bag"]')) e.preventDefault(); });
+invEl.addEventListener('drop', e => {
+  e.preventDefault();
+  const t = e.target.closest('[data-act]'); if (!t || !sel) return;
+  if (t.dataset.act === 'slot') clickSlot(+t.dataset.s, +t.dataset.i);
+  else if ((t.dataset.act === 'bagzone' || t.dataset.act === 'bag') && sel.src === 'slot') unequipSlot(sel.s, sel.i);
+});
+const tipEl = $('tip');
+invEl.addEventListener('mousemove', e => {
+  const t = e.target.closest('[data-card]');
+  if (!t) { tipEl.style.display = 'none'; return; }
+  const k = t.dataset.card, C = CARDS[k];
+  const typ = { proj: '法术 · ' + (EL[C.el] ? EL[C.el].name : ''), mod: '修饰', multi: '多重施法', payload: '触发' }[C.type];
+  let stats = `法力 <span class="tv">${C.cost}</span>`;
+  if (C.delay) stats += `　施法延迟 <span class="tv">${C.delay > 0 ? '+' : ''}${C.delay}s</span>`;
+  if (C.dmg) stats += `　伤害 <span class="tv">${C.dmg}</span>`;
+  if (C.aoe) stats += `　爆炸 <span class="tv">${C.aoe}m</span>`;
+  tipEl.innerHTML = `<div class="tn" style="color:${RAR[C.rar].css}">${C.name}</div><div class="tt">${typ} · ${RAR[C.rar].name}</div><div>${stats}</div><div>${C.desc}</div>`;
+  tipEl.style.display = 'block';
+  tipEl.style.left = Math.min(innerWidth - 260, e.clientX + 16) + 'px'; tipEl.style.top = Math.min(innerHeight - 140, e.clientY + 16) + 'px';
+});
+
+// ============ HUD ============
+const hpFill = document.querySelector('.orb.hp .fill'), hpTxt = document.querySelector('.orb.hp span');
+const curEl = $('cursor'), tgt = $('target'), tgtN = tgt.querySelector('.tn'), tgtF = tgt.querySelector('.tf'), tgtH = tgt.querySelector('.th');
+const hurtEl = $('hurt');
+const sbEls = [0, 1].map(s => { const r = $('sb' + s); return { nm: r.querySelector('.nm'), info: r.querySelector('.info'), slots: r.querySelector('.slots'), mana: r.querySelector('.mana i'), mtxt: r.querySelector('.mtxt'), rl: r.querySelector('.rl'), rli: r.querySelector('.rl i'), id: -1 }; });
+const blinkBars = [...document.querySelectorAll('.blinks i b')];
+function orcStatusText(o) {
+  let s = '';
+  if (o.frozen > 0) s += '<span style="color:#bff4ff">冻结 </span>';
+  else if (o.chill > 0) s += `<span style="color:#8fe0ff">冰寒${o.chill} </span>`;
+  if (o.burn > 0) s += '<span style="color:#ffa040">燃烧 </span>';
+  if (o.shock > 0) s += '<span style="color:#c9b4ff">感电 </span>';
+  if (o.vuln > 0) s += '<span style="color:#ffe08a">破绽 </span>';
+  return s;
+}
+let hurtOp = 0;
+function updateHUD(dt) {
+  const P = player;
+  hpFill.style.height = (P.hp / P.maxHp * 100) + '%'; hpTxt.textContent = `${Math.ceil(P.hp)}/${P.maxHp}`;
+  for (let s = 0; s < 2; s++) {
+    const st = equip[s], E = sbEls[s];
+    if (hudDirty || E.id !== st.id) {
+      E.id = st.id;
+      E.nm.textContent = st.name; E.nm.style.color = RAR[st.rar].css;
+      E.info.textContent = `延迟 ${st.delay.toFixed(2)}s · 充能 ${st.reload.toFixed(2)}s`;
+      E.slots.innerHTML = st.cards.map(k => cardHTML(k, 'sm')).join('') + (st.always ? cardHTML(st.always, 'sm always') : '');
+    }
+    const kids = E.slots.children;
+    for (let i = 0; i < st.slots && i < kids.length; i++) {
+      kids[i].classList.toggle('next', !st.reloading && i === nextIdx(st));
+      kids[i].classList.toggle('used', !st.reloading && i < st.idx);
+    }
+    E.mana.style.width = (st.mana / st.manaMax * 100) + '%'; E.mtxt.textContent = `${Math.floor(st.mana)}/${st.manaMax}`;
+    E.rl.classList.toggle('reload', st.reloading);
+    E.rli.style.width = (Math.max(0, st.cd) / Math.max(0.01, st.cdMax) * 100) + '%';
+  }
+  hudDirty = false;
+  blinkBars.forEach((b, i) => { b.style.width = (i < P.blinkCh ? 100 : i === P.blinkCh ? P.blinkT / BLINK_CD * 100 : 0) + '%'; });
+  $('invhint').textContent = newItems > 0 ? `Tab · 法杖工坊（新物品 ${newItems}）` : 'Tab · 法杖工坊';
+  curEl.style.transform = `translate(${mouseX}px,${mouseY}px)`;
+  curEl.classList.toggle('hot', !!aim.orc);
+  hitMarkT -= dt; curEl.classList.toggle('hit', hitMarkT > 0);
+  const o = aim.orc;
+  if (o && !o.dead) {
+    tgt.style.opacity = 1; tgtN.textContent = o.name; tgtN.style.color = o.T.boss ? '#ffd24a' : o.elite ? '#8fb8ff' : '#ffe6a8';
+    tgtF.style.width = (o.hp / o.maxHp * 100) + '%';
+    tgtH.innerHTML = `${Math.max(0, Math.ceil(o.hp))} / ${o.maxHp}　` + orcStatusText(o);
+  } else tgt.style.opacity = 0;
+  hurtOp = parseFloat(hurtEl.style.opacity) || 0;
+  hurtEl.style.opacity = Math.max(0, hurtOp - dt * 1.5);
+  if (bannerTimer > 0) { bannerTimer -= dt; if (bannerTimer <= 0) $('banner').style.opacity = 0; }
+  aimRing.position.set(aim.ground.x, H(aim.ground.x, aim.ground.z) + 0.1, aim.ground.z);
+  aimRing.material.color.setHex(aim.orc ? 0xff6040 : 0xfff0c0);
+  aimRing.visible = started && !P.dead;
+}
+function nextIdx(st) { for (let i = st.idx; i < st.slots; i++) if (st.cards[i]) return i; return -1; }
+const _bp = V3();
+function updateBars() {
+  for (const o of orcs) {
+    if (o.dead || o.gone) continue;
+    _bp.set(o.pos.x, o.pos.y + 2.55 * o.scale, o.pos.z);
+    const d = _bp.distanceTo(camera.position);
+    if (d > 50 || !toScreen(_bp, _sp)) { o.bar.style.display = 'none'; continue; }
+    o.bar.style.display = 'block';
+    o.bar.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-100%) scale(${clamp(24 / d, 0.6, 1.1)})`;
+    o.barFg.style.width = (Math.max(0, o.hp) / o.maxHp * 100) + '%';
+    const s = orcStatusText(o);
+    if (s !== o.sttStr) { o.sttStr = s; o.barSt.innerHTML = s; }
+  }
+}
+
+// ============ 氛围 ============
+function ambient(dt) {
+  if (Math.random() < dt * 22) fx.emit(player.pos.x + rand(-22, 22), player.pos.y + rand(0.3, 4), player.pos.z + rand(-22, 22),
+    rand(-0.2, 0.2), rand(0.05, 0.3), rand(-0.2, 0.2), rand(3, 6), 0.13, 0.08, [0.55, 1, 0.5], [0.3, 0.8, 0.45], 0, 0, 0.7);
+  const R = window.__rune; if (R) { R.rune.material.opacity = 0.4 + Math.sin(time * 2) * 0.2; R.orbG.scale.setScalar(2.4 + Math.sin(time * 3) * 0.3); }
+}
+
+// ============ 开局 ============
+{
+  const plan = [[3, 0], [4, 0], [4, 0], [5, 0], [5, 0]];
+  plan.forEach(([n], i) => {
+    for (let t = 0; t < 40; t++) {
+      const x = START.x + START_SAFE + i * 13 + rand(-2, 4), z = pathZ(x) + rand(-7, 7);
+      if (!colliders.some(c => (c.x - x) ** 2 + (c.z - z) ** 2 < (c.r + 1.5) ** 2)) { spawnPack(x, z, false, n); break; }
+    }
+  });
+}
+
+// ============ 主循环 ============
+const clock = new THREE.Clock();
+function frame() {
+  requestAnimationFrame(frame);
+  let dt = Math.min(clock.getDelta(), 0.05);
+  if (paused || invOpen) dt = 0;
+  time += dt;
+  computeAim();
+  if (dt > 0) {
+    updatePlayer(dt);
+    for (const o of orcs) o.update(dt);
+    for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
+    spawner(dt);
+    updateProjs(dt);
+    updateEShots(dt);
+    updateDrops(dt);
+    updateZaps(dt);
+    updateRings(dt);
+    ambient(dt);
+    fx.update(dt); dust.update(dt);
+  } else animateMage(0, 0);
+  updateCamera(dt || 1 / 60);
+  occU.uPly.value.set(player.pos.x, player.pos.y + 1.2, player.pos.z);
+  occU.uCamP.value.copy(camera.position);
+  occU.uAimP.value.set(aim.ground.x, aim.ground.y + 1, aim.ground.z);
+  const us = innerHeight * renderer.getPixelRatio() * 0.5 / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+  fx.mat.uniforms.uScale.value = us; dust.mat.uniforms.uScale.value = us;
+  sun.position.copy(player.pos).add(SUN_OFF); sun.target.position.copy(player.pos);
+  updateHUD(dt); updateBars(); updateFloaters(dt);
+  renderer.clear(); renderer.render(scene, camera);
+}
+frame();
+const btn = $('startBtn'); btn.disabled = false; btn.textContent = '进入沃玛森林';
+window.__game = { player, orcs, equip, inv, aim, cam, camera, drops, spawnPack, toggleInv, genStaff, CARDS, get kills() { return kills; },
+  start() { $('startBtn').click(); } };
+</script>
+</body>
+</html>
