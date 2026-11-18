@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14211b">
+  <title>铁橡林 · 剑盾试炼</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%231a2a21' stroke='%23eac380' stroke-width='2' d='M16 2 28 7v10c0 6-7 11-12 13C11 28 4 23 4 17V7Z'/%3E%3Cpath fill='none' stroke='%23eac380' stroke-width='2' d='M16 8v16m-6-5 6-6 6 6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main id="arena" aria-label="铁橡林战斗场地">
+    <div id="world"></div>
+    <div class="vignette"></div>
+    <header class="top">
+      <div class="identity">
+        <span class="crest" aria-hidden="true"><svg viewBox="0 0 40 44"><path d="M20 2 36 10v14c0 8-10 15-16 18C14 39 4 32 4 24V10Z"/><path d="M20 8v26M12 24l8-8 8 8M14 16l6-6 6 6"/></svg></span>
+        <div><p class="eyebrow">IRON OAK / COMBAT TRIAL</p><h1>铁橡林</h1></div>
+      </div>
+      <div class="objective"><i></i><div><span>林地试炼</span><strong id="remaining">击败半兽人 <b>5</b></strong></div></div>
+    </header>
+
+    <div id="boss-hud" class="boss-hud">
+      <div><span>精英</span><strong>半兽人统领</strong><span id="boss-percent">100%</span></div>
+      <div class="boss-track"><i id="boss-health"></i></div>
+    </div>
+
+    <div id="floaters" aria-hidden="true"></div>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <div id="hurt-screen"></div>
+
+    <div id="touch-stick" aria-label="移动摇杆"><i></i></div>
+    <footer class="bottom">
+      <div class="combat-hud">
+        <section class="vitals" aria-label="生命与怒气">
+          <div class="meter-label"><span>生命</span><strong id="hp-value">320 / 320</strong></div>
+          <div class="track hp"><i id="health"></i></div>
+          <div class="meter-label rage-label"><span>怒气</span><div id="rage-points" aria-label="0 / 3 怒气点"><i></i><i></i><i></i></div><strong id="rage-value">0 / 100</strong></div>
+          <div class="track rage"><i id="rage"></i></div>
+        </section>
+        <div class="action-bar" aria-label="战斗技能">
+          <button class="action" data-action="attack" title="普攻：近身命中获得怒气" aria-label="普攻，近身命中获得怒气">
+            <kbd>左键</kbd><svg viewBox="0 0 40 40" aria-hidden="true"><path d="m13 26 15-20 6-2-1 7-17 18m-7-7 12 12m-6-6-8 8-3-3 8-8"/><path d="m17 24 11-13"/></svg><span>普攻</span>
+          </button>
+          <button class="action skill" data-action="charge" data-cost="1" title="冲锋：突进至 3.5–10 米内的敌人，打断蓄力并使其眩晕" aria-label="冲锋，消耗 1 怒气点">
+            <kbd>Q</kbd><svg viewBox="0 0 40 40" aria-hidden="true"><path d="m23 6 12 5v10c0 6-6 11-12 14-5-3-10-8-10-14V11Z"/><path d="m25 12-6 9h7l-3 7M4 11h6M2 18h8m-6 7h6m-7 7h10"/></svg><span>冲锋</span><i class="cost">◆</i>
+          </button>
+          <button class="action skill" data-action="throw" data-cost="2" title="回旋投盾：依次撞击最多两名敌人后返回" aria-label="回旋投盾，消耗 2 怒气点">
+            <kbd>E</kbd><svg viewBox="0 0 40 40" aria-hidden="true"><path d="m23 5 10 6v10l-10 8-10-8V11Z"/><circle cx="23" cy="17" r="3"/><path d="M10 17H5m4 7H2m17 7c3 4 10 4 15 0m-4-3 5 2-1 5"/></svg><span>回旋投盾</span><i class="cost">◆◆</i>
+          </button>
+          <button class="action skill" data-action="spin" data-cost="3" title="旋风斩：持续 3.6 秒，移动中横扫八次" aria-label="旋风斩，消耗 3 怒气点">
+            <kbd>R</kbd><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M31 9c-6-4-16-4-22 2C1 19 7 31 19 32c9 1 15-4 15-10 0-5-5-8-10-6m0 0 3-5m-3 5 6 3M7 27l-2 5 6-1"/><path d="M15 24c-3-4 0-9 5-10m-1 10 3-4 4 4-4 4Z"/></svg><span>旋风斩</span><i class="cost">◆◆◆</i>
+          </button>
+          <button class="action dodge" data-action="dodge" title="闪避：短距离冲刺，期间免伤" aria-label="闪避">
+            <kbd>空格</kbd><svg viewBox="0 0 40 40" aria-hidden="true"><path d="m22 8 12 12-12 12M12 13l7 7-7 7M5 17l3 3-3 3"/></svg><span>闪避</span>
+          </button>
+        </div>
+        <div class="utility">
+          <button id="sound" type="button" aria-label="关闭音效" aria-pressed="false" title="音效"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3zm13-1a6 6 0 0 1 0 8m2-11a10 10 0 0 1 0 14"/><path class="mute-mark" d="m4 20 16-16"/></svg></button>
+          <button id="restart" type="button" aria-label="重开战斗" title="重开战斗"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 2 8m-2-2v-6h6"/></svg></button>
+        </div>
+      </div>
+      <p class="controls"><span><kbd>W A S D</kbd> 移动</span><span><kbd>左键</kbd> 普攻</span><span><kbd>空格</kbd> 闪避</span><span class="tip">近战命中积攒怒气，每满一条获得 1 点</span></p>
+    </footer>
+    <div id="result" class="screen" hidden>
+      <section class="panel" aria-labelledby="result-title">
+        <p class="eyebrow" id="result-tag"></p>
+        <h2 id="result-title"></h2>
+        <p id="result-detail"></p>
+        <button id="again" type="button">再次挑战 <span>↻</span></button>
+      </section>
+    </div>
+    <p id="loading" role="status">正在进入铁橡林…</p>
+  </main>
+  <script type="module">
+    import('./game.js').catch((error) => {
+      document.querySelector('#loading').textContent = '战斗加载失败。请检查网络和浏览器的 WebGL 支持后刷新。';
+      console.error(error);
+    });
+  </script>
+</body>
+</html>
