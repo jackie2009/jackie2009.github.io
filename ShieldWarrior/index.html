@@ -32,6 +32,8 @@
   .ebar .bg{height:5px;background:#2a0505;border:1px solid #000}
   .ebar .fg{height:100%;width:100%;background:linear-gradient(#ff5a45,#a8120b)}
   .ebar .stt{font-size:11px;text-align:center;font-weight:bold;height:13px;color:#ffe060;text-shadow:0 1px 2px #000;white-space:nowrap}
+  .ebar.elite{width:88px}.ebar.elite .nm{color:#8fb8ff;font-weight:bold}.ebar.elite .bg{height:6px}
+  .floater.lvl{color:#8fe0ff;font-size:22px;letter-spacing:2px;text-shadow:0 0 4px #000,0 0 12px #2a90ff}
 
   #boss{position:fixed;top:18px;left:50%;transform:translateX(-50%);width:520px;text-align:center;display:none;pointer-events:none}
   #boss .bn{font-size:17px;color:#ffd24a;letter-spacing:4px;text-shadow:0 1px 3px #000,0 0 10px rgba(255,120,0,.4);margin-bottom:4px}
@@ -41,6 +43,7 @@
   #boss .bs{font-size:12px;color:#ffb070;margin-top:3px;height:16px;text-shadow:0 1px 2px #000}
   #wave{position:fixed;top:16px;right:22px;font-size:14px;color:#e8d6a6;text-shadow:0 1px 3px #000;text-align:right;line-height:1.7}
   #wave b{font-size:22px;color:#ffcf4a;margin-left:6px}
+  #fps{position:fixed;bottom:8px;right:12px;font:12px/1 Menlo,Consolas,monospace;color:#9fe09f;text-shadow:0 1px 2px #000;pointer-events:none}
   #help{position:fixed;top:14px;left:16px;font-size:12px;line-height:1.8;color:#d8d0bc;text-shadow:0 1px 2px #000;
     background:rgba(20,14,8,.5);padding:8px 12px;border:1px solid rgba(201,162,60,.35)}
   #help b{color:#ffcf6a;font-weight:normal}
@@ -74,6 +77,35 @@
   #ragef{height:100%;width:0;background:linear-gradient(#ffb050,#ff5a00 60%,#a02800)}
   #ragebar.max{border-color:#ffb040;box-shadow:0 0 10px #ff6000}
   #ragebar span{position:absolute;inset:0;font-size:10px;line-height:8px;text-align:center;color:#ffe0b0;text-shadow:0 1px 2px #000}
+  #xpr{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:12px;color:#9fd0ff;text-shadow:0 1px 2px #000}
+  #xpbar{flex:1;height:6px;border:1px solid #1a3a5a;background:#06101a}
+  #xpf{height:100%;width:0;background:linear-gradient(#8fe0ff,#2a70d0)}
+  #xpr .hint{color:#7a8a9a}
+  #xpr.has .hint{color:#bfefff;animation:blink 1s infinite}
+  #xpr.has #spt{color:#fff;font-weight:bold}
+  @keyframes blink{50%{opacity:.35}}
+
+  #runes{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:20}
+  #runes.open{display:flex}
+  .rpanel{width:860px;padding:22px 26px;border:2px solid #9a7a32;background:linear-gradient(#2a1e10f2,#140c06f2);box-shadow:0 0 0 3px #1a1008,0 0 40px rgba(0,0,0,.9)}
+  .rpanel h3{margin:0 0 14px;text-align:center;font-size:22px;letter-spacing:6px;color:#ffd77a}
+  .rpanel h3 span{font-size:15px;letter-spacing:1px;color:#9fd0ff;margin-left:10px}
+  .rcols{display:flex;gap:16px}
+  .rcol{flex:1;border:1px solid #4a3a1c;background:rgba(0,0,0,.25);padding:10px}
+  .rcol h4{margin:0 0 10px;text-align:center;font-size:16px;color:#ffcf6a;letter-spacing:2px}
+  .rcol h4 small{display:block;font-size:11px;color:#a89a78;letter-spacing:0;font-weight:normal;margin-top:3px}
+  .rune{position:relative;border:1px solid #5a4a2a;background:#1a120a;padding:8px 10px;margin-bottom:8px;cursor:default;opacity:.55;transition:all .12s}
+  .rune .rt{font-size:14px;color:#e8d6a6}
+  .rune .rc{position:absolute;right:8px;top:8px;font-size:11px;color:#8fd0ff}
+  .rune .rd{font-size:11px;color:#b8aa88;line-height:1.5;margin-top:3px}
+  .rune .pips{margin-top:5px;display:flex;gap:4px}
+  .rune .pips i{width:10px;height:10px;transform:rotate(45deg);border:1px solid #5a7a9a;background:#0a1018}
+  .rune .pips i.on{background:#6fd0ff;border-color:#cfefff;box-shadow:0 0 6px #2a90ff}
+  .rune.can{opacity:1;border-color:#6fb0e0;cursor:pointer}
+  .rune.can:hover{background:#1a2a3a;box-shadow:0 0 12px rgba(80,170,255,.5)}
+  .rune.full{opacity:1;border-color:#d8a838;background:#2a1e0a}
+  .rune.full .rt{color:#ffd77a}
+  .rtip{text-align:center;font-size:12px;color:#a89a78;margin-top:6px}
 
   #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:radial-gradient(ellipse at center,rgba(10,20,12,.55),rgba(0,0,0,.88))}
@@ -103,8 +135,10 @@
 <div id="dmg"></div>
 <div id="help"><b>WASD</b> 移动　<b>空格</b> 闪身　<b>鼠标</b> 转视角<br>
   <b>左键</b> 三段连斩　<b>右键（按住）</b> 举盾格挡<br>
-  <b>Q</b> 盾牌冲锋　<b>E</b> 投掷盾牌　<b>R</b> 旋风斩　<b>Esc</b> 暂停</div>
+  <b>Q</b> 盾牌冲锋　<b>E</b> 投掷盾牌　<b>R</b> 旋风斩<br>
+  <b>Tab</b> 技能符文　<b>Esc</b> 暂停</div>
 <div id="wave">波次<b>-</b><br><span id="wsub"></span></div>
+<div id="fps">FPS --</div>
 <div id="boss"><div class="bn">半兽统领 · 格鲁克</div><div class="bb"><div class="bf"></div>
   <div class="bmark" style="left:66%"></div><div class="bmark" style="left:50%"></div><div class="bmark" style="left:33%"></div></div><div class="bs"></div></div>
 <div id="banner"></div>
@@ -116,16 +150,21 @@
   </div>
   <div id="hpbar"><div id="hpf"></div><div id="hpt"></div></div>
   <div id="rager"><div id="gems"><i></i><i></i><i></i></div><div id="ragebar"><div id="ragef"></div><span></span></div></div>
+  <div id="xpr"><span id="spt">技能点 0</span><div id="xpbar"><div id="xpf"></div></div><span class="hint">Tab 激活符文</span></div>
 </div>
+<div id="runes"><div class="rpanel"><h3>技能符文<span id="rsp"></span></h3><div class="rcols" id="rcols"></div>
+  <div class="rtip">点击激活符文（无先后顺序，有技能点即可）　·　Tab / Esc 关闭并继续战斗</div></div></div>
 <div id="end"></div>
 <div id="overlay"><div class="panel">
   <h1>怒 盾</h1>
   <h2>剑盾战士 · 沃玛森林 · 战斗演示</h2>
   <p><b>怒气</b>：近身作战才能积攒怒气——<b>挥剑命中</b>、<b>格挡</b>、<b>受到伤害</b>都会让怒气条上涨。怒气条本身无法使用；
     每当怒气条<em>蓄满</em>就会凝结成一枚<em>怒气点</em>（最多 3 枚）。脱战 5 秒后怒气条会缓慢回落，已凝结的怒气点不会流失。</p>
-  <p><b>Q · 盾牌冲锋（1 点）</b>：举盾冲向前方敌人，撞击眩晕并击退，可打断首领蓄力——用来<em>拉近距离</em>。<br>
-    <b>E · 投掷盾牌（2 点）</b>：盾牌依次弹射附近最多 2 个敌人再飞回手中；盾牌未归时无法格挡——用来<em>远程收割/打断</em>。<br>
+  <p><b>Q · 盾牌冲锋（1 点）</b>：举盾冲向前方敌人，撞击造成伤害并击退——用来<em>拉近距离</em>。<br>
+    <b>E · 投掷盾牌（2 点）</b>：盾牌依次弹射附近最多 2 个敌人再飞回手中；盾牌未归时无法格挡——用来<em>远程收割</em>。<br>
     <b>R · 旋风斩（3 点）</b>：3 秒持续旋转斩击周围所有敌人，可移动、减伤且不会被打断。</p>
+  <p><b>技能符文</b>：击杀获得经验，约每 2 个半兽人获得 1 个<em>技能点</em>（半兽战士经验更多）。按 <b>Tab</b> 打开符文面板，
+    任意顺序激活符文强化技能（眩晕、更多目标、更多旋转……）。共 <em>5 波</em>，最后一波是半兽统领。</p>
   <p><b>左键</b> 三段连斩（第三段重劈可击退半兽人）；<b>右键</b> 举盾，敌人出手前一刻举盾为<em>完美格挡</em>：免伤、反震眩晕、大量怒气。
     地面出现<em>红圈</em>的攻击无法格挡，只能闪身或离开。</p>
   <button id="startBtn" disabled>加载中…</button>
@@ -444,7 +483,7 @@ function buildHero() {
   const gold = std(0xd8a838, { metalness: 0.8, roughness: 0.3 }), dark = std(0x16120e);
   const blade = std(0xe4ebf4, { metalness: 0.95, roughness: 0.18 });
   const leg = side => {
-    const p = new THREE.Group(); p.position.set(side * 0.17, 0.95, 0); body.add(p);
+    const p = new THREE.Group(); p.rotation.order = 'YXZ'; p.position.set(side * 0.17, 0.95, 0); body.add(p);
     mesh(Box(0.21, 0.5, 0.25), steel, p, 0, -0.25, 0);
     mesh(Box(0.23, 0.1, 0.27), dsteel, p, 0, -0.5, 0.01);
     mesh(Box(0.19, 0.42, 0.22), dsteel, p, 0, -0.7, 0);
@@ -673,7 +712,7 @@ const chargeGlow = new THREE.Sprite(glowMat(0xffb040)); chargeGlow.scale.setScal
 
 const P = {
   pos: hero.root.position, yaw: Math.PI, r: 0.45, hp: 300, maxHp: 300,
-  rage: 0, points: 0, lastCombat: -99,
+  rage: 0, points: 0, lastCombat: -99, xp: 0, sp: 0,
   state: 'move', t: 0, combo: 0, queued: false, hitDone: false, lunge: 0,
   blocking: false, blockStart: -9, dodgeCd: 0, iframe: 0, dodgeDir: V3(), walk: 0, spin: 0,
   shieldOut: false, dead: false, kills: 0, moveSpeed: 0,
@@ -708,6 +747,8 @@ addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
   if (!started) return;
+  if (runeOpen) { if (e.code === 'Tab' || e.code === 'Escape') closeRunes(); return; }
+  if (e.code === 'Tab' && !gameOver && !paused) { openRunes(); return; }
   if (e.code === 'Escape' && freeMouse) { setPaused(!paused); return; }
   if (gameOver) { if (e.code === 'Enter') resetGame(); return; }
   if (paused) return;
@@ -731,20 +772,21 @@ addEventListener('mousemove', e => {
   cam.pitch = clamp(cam.pitch - e.movementY * SENS, -1.0, 0.25);
 });
 function requestLock() {
-  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { freeMouse = true; setPaused(false); }); }
+  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { freeMouse = true; if (!runeOpen) setPaused(false); }); }
   catch (e) { freeMouse = true; }
-  setTimeout(() => { if (!locked) { freeMouse = true; setPaused(false); } }, 400);
+  setTimeout(() => { if (!locked && !runeOpen) { freeMouse = true; setPaused(false); } }, 400);
 }
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
-  if (locked) { freeMouse = false; setPaused(false); }
+  if (locked) { freeMouse = false; if (!runeOpen) setPaused(false); }
   else if (started && !gameOver) setPaused(true);
 });
-document.addEventListener('pointerlockerror', () => { freeMouse = true; setPaused(false); });
+document.addEventListener('pointerlockerror', () => { freeMouse = true; if (!runeOpen) setPaused(false); });
 function setPaused(v) {
   paused = v; document.body.classList.toggle('playing', !v);
   lmb = rmb = false;
-  if (v && !gameOver) banner('已暂停', '点击画面继续', 9999); else if (!v && bannerTimer > 100) { bannerTimer = 0.01; }
+  if (v && !gameOver && !runeOpen) banner('已暂停', '点击画面继续', 9999);
+  else if (bannerTimer > 100) { bannerTimer = 0.01; }
 }
 
 const _f = V3(), _r = V3(), _d = V3();
@@ -757,9 +799,11 @@ function inputDir(out) {
 
 // ============ 敌人 ============
 const ETYPES = {
-  orc: { name: '半兽人', hp: 90, dmg: 12, speed: 3.6, range: 2.1, windup: 0.62, recover: 0.75, scale: 1, r: 0.55, skin: 0x5b7a38, armor: 0x6c6c72, helm: false, boss: false },
-  boss: { name: '半兽统领 · 格鲁克', hp: 1300, dmg: 30, speed: 3.2, range: 3.1, windup: 0.8, recover: 1.0, scale: 1.7, r: 1.0, skin: 0x46602c, armor: 0x4a2e22, helm: true, boss: true },
+  orc: { name: '半兽人', hp: 90, dmg: 12, speed: 3.6, range: 2.1, windup: 0.62, recover: 0.75, scale: 1, r: 0.55, skin: 0x5b7a38, armor: 0x6c6c72, helm: false, boss: false, xp: 50 },
+  warrior: { name: '半兽战士', hp: 170, dmg: 18, speed: 3.3, range: 2.4, windup: 0.72, recover: 0.85, scale: 1.18, r: 0.65, skin: 0x4f6e30, armor: 0x8a5a2a, helm: true, boss: false, elite: true, heavy: true, xp: 90 },
+  boss: { name: '半兽统领 · 格鲁克', hp: 1300, dmg: 30, speed: 3.2, range: 3.1, windup: 0.8, recover: 1.0, scale: 1.7, r: 1.0, skin: 0x46602c, armor: 0x4a2e22, helm: true, boss: true, xp: 300 },
 };
+const XP_PER_POINT = 100;
 const enemies = [];
 const attackingOrcs = () => enemies.reduce((n, e) => n + (!e.isBoss && !e.dead && (e.state === 'windup' || e.state === 'strike') ? 1 : 0), 0);
 
@@ -775,7 +819,7 @@ class Enemy {
     this.lastPos = V3(); this.tired = 0; this.teleMesh = null; this.spinA = 0;
     if (this.isBoss) Object.assign(this, { leapCd: 4, whirlCd: 6, roars: [0.66, 0.33], action: null, tick: 0, from: V3(), to: V3() });
     else {
-      const el = document.createElement('div'); el.className = 'ebar';
+      const el = document.createElement('div'); el.className = 'ebar' + (T.elite ? ' elite' : '');
       el.innerHTML = `<div class="nm">${T.name}</div><div class="bg"><div class="fg"></div></div><div class="stt"></div>`;
       barsLayer.appendChild(el); this.bar = { el, fg: el.querySelector('.fg'), stt: el.querySelector('.stt') };
     }
@@ -807,6 +851,7 @@ class Enemy {
     killTele(this.teleMesh); this.teleMesh = null; this.rig.stars.visible = false;
     if (this.bar) this.bar.el.remove();
     sfx('die'); P.kills++;
+    gainXP(this.T.xp, this);
     if (this.isBoss) { sfx('roar', 0.6); banner('半兽统领 倒下了！', '沃玛森林恢复了宁静', 4); }
     else if (Math.random() < 0.35) dropOrb(this.pos);
   }
@@ -879,7 +924,7 @@ class Enemy {
         if (this.st >= T.windup) {
           this.state = 'strike'; this.st = 0; this.tele = 0; sfx('swing', 0.8);
           const ang = Math.abs(wrapAngle(want - this.yaw));
-          if (dist <= T.range + this.r + P.r && ang < 1.0) hitPlayer(T.dmg, this, { blockable: true });
+          if (dist <= T.range + this.r + P.r && ang < 1.0) hitPlayer(T.dmg, this, { blockable: true, heavy: !!T.heavy });
         }
         break;
       }
@@ -1076,10 +1121,10 @@ function separate() {
     }
   }
 }
-function pickTarget(maxD, yaw, maxAng, from = P.pos, exclude = null) {
+function pickTarget(maxD, yaw, maxAng, from = P.pos, exclude = []) {
   let best = null, bs = 1e9;
   for (const e of enemies) {
-    if (e.dead || e === exclude) continue;
+    if (e.dead || exclude.includes(e)) continue;
     const d = flatDist(from, e.pos) - e.r; if (d > maxD) continue;
     const ang = yaw === null ? 0 : Math.abs(wrapAngle(yawTo(from, e.pos) - yaw)); if (ang > maxAng) continue;
     const s = d + ang * 3; if (s < bs) { bs = s; best = e; }
@@ -1102,6 +1147,64 @@ function addRage(v) {
     $('rageglow').style.opacity = 0.9;
   }
   if (P.points >= 3) P.rage = Math.min(P.rage, 100);
+}
+
+// ============ 经验 / 技能符文 ============
+const RUNES = [
+  [
+    { id: 'stun', name: '目标眩晕', cost: 1, max: 1, desc: '冲锋撞中的目标眩晕 1.6 秒（首领减半）' },
+    { id: 'dmg', name: '更多伤害', cost: 1, max: 1, desc: '冲锋撞击伤害 35 → 60' },
+    { id: 'aoe', name: '全体撞击', cost: 2, max: 1, desc: '目标周围 3.5 米内的敌人受到同样效果，伤害为 80%' },
+  ],
+  [
+    { id: 'more', name: '更多目标', cost: 1, max: 3, desc: '每级弹射目标 +1（基础 2 个，最多 5 个）' },
+    { id: 'stun', name: '撞击眩晕', cost: 1, max: 1, desc: '盾牌每次命中眩晕目标 0.7 秒' },
+    { id: 'force', name: '强行打击', cost: 2, max: 1, desc: '目标不足时，盾牌飞到空处再折返，随机重复打击已锁定的敌人，打满全部次数（每个目标至少先打一次）' },
+  ],
+  [
+    { id: 'stun', name: '眩晕', cost: 1, max: 1, desc: '旋风每次命中眩晕敌人 0.6 秒（首领免疫）' },
+    { id: 'spin', name: '多转一圈', cost: 1, max: 3, desc: '每级旋风斩多持续 1 秒（约多 4 次伤害）' },
+  ],
+];
+const runeLv = [{}, {}, {}];
+const rl = (s, id) => runeLv[s][id] || 0;
+function gainXP(v, src) {
+  P.xp += v;
+  let n = 0;
+  while (P.xp >= XP_PER_POINT) { P.xp -= XP_PER_POINT; P.sp++; n++; }
+  if (n) {
+    sfx('heal'); sfx('rage', 0.6);
+    floater(V3(P.pos.x, P.pos.y + 2.7, P.pos.z), `技能点 +${n}`, 'lvl');
+    if (runeOpen) renderRunes();
+  }
+}
+let runeOpen = false;
+function renderRunes() {
+  $('rsp').textContent = `可用技能点：${P.sp}`;
+  const keys = ['Q', 'E', 'R'];
+  $('rcols').innerHTML = RUNES.map((list, s) => `<div class="rcol"><h4>${keys[s]} · ${SKILLS[s].name}<small>消耗 ${SKILLS[s].cost} 怒气点</small></h4>` +
+    list.map(r => {
+      const lv = rl(s, r.id), full = lv >= r.max, can = !full && P.sp >= r.cost;
+      const pips = Array.from({ length: r.max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('');
+      return `<div class="rune ${full ? 'full' : can ? 'can' : ''}" data-s="${s}" data-id="${r.id}">` +
+        `<div class="rt">${r.name}</div><div class="rc">${full ? '已激活' : r.cost + ' 点'}</div><div class="rd">${r.desc}</div><div class="pips">${pips}</div></div>`;
+    }).join('') + '</div>').join('');
+}
+$('rcols').addEventListener('click', ev => {
+  const el = ev.target.closest('.rune'); if (!el) return;
+  const s = +el.dataset.s, r = RUNES[s].find(r => r.id === el.dataset.id);
+  if (rl(s, r.id) >= r.max || P.sp < r.cost) { sfx('empty'); return; }
+  P.sp -= r.cost; runeLv[s][r.id] = rl(s, r.id) + 1;
+  sfx('rage', 0.7); renderRunes();
+});
+function openRunes() {
+  runeOpen = true; renderRunes(); $('runes').classList.add('open');
+  setPaused(true);
+  if (locked) document.exitPointerLock();
+}
+function closeRunes() {
+  runeOpen = false; $('runes').classList.remove('open');
+  if (freeMouse) setPaused(false); else requestLock();
 }
 
 // ============ 玩家受击 ============
@@ -1159,10 +1262,8 @@ function onAttackPress() {
   else if (P.state === 'attack' && P.t > 0.08) P.queued = true;
 }
 function faceTarget(range, maxAng) {
-  const has = inputDir(_d);
-  const aim = has ? Math.atan2(_d.x, _d.z) : P.yaw;
-  const t = pickTarget(range, aim, maxAng);
-  if (t) P.yaw = yawTo(P.pos, t.pos); else if (has) P.yaw = aim;
+  const t = pickTarget(range, cam.yaw, maxAng);
+  P.yaw = t ? yawTo(P.pos, t.pos) : cam.yaw;
   return t;
 }
 function startAttack(i) {
@@ -1195,8 +1296,7 @@ function meleeHit(A) {
 function tryDodge() {
   if (P.dead || P.dodgeCd > 0) return;
   if (!(P.state === 'move' || (P.state === 'attack' && P.hitDone) || P.state === 'hurt' && P.t > 0.2)) return;
-  if (!inputDir(P.dodgeDir)) P.dodgeDir.set(-Math.sin(P.yaw), 0, -Math.cos(P.yaw));
-  else P.yaw = Math.atan2(P.dodgeDir.x, P.dodgeDir.z);
+  if (!inputDir(P.dodgeDir)) P.dodgeDir.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
   P.state = 'dodge'; P.t = 0; P.iframe = 0.3; P.dodgeCd = 0.55; P.blocking = false;
   sfx('dodge');
 }
@@ -1219,43 +1319,77 @@ function trySkill(i) {
 }
 // 1 点：盾牌冲锋
 function startCharge() {
-  const t = pickTarget(15, cam.yaw, 0.9) || faceTarget(15, 1.2);
-  if (t) P.yaw = yawTo(P.pos, t.pos); else P.yaw = inputDir(_d) ? Math.atan2(_d.x, _d.z) : cam.yaw;
+  const t = pickTarget(15, cam.yaw, 0.9) || pickTarget(15, cam.yaw, 1.2);
+  P.yaw = t ? yawTo(P.pos, t.pos) : cam.yaw;
   P.state = 'charge'; P.t = 0; P.chargeTarget = t; P.chargeHit = new Set();
   P.chargeLeft = t ? clamp(flatDist(P.pos, t.pos) - t.r - P.r + 0.2, 1.5, 15) : 9;
   sfx('grunt', 0.6); sfx('dodge');
 }
 function chargeImpact(e, main) {
   P.chargeHit.add(e);
-  _d.set(e.pos.x - P.pos.x, 0, e.pos.z - P.pos.z).normalize();
-  const fwd = _f.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+  const fwd = V3(Math.sin(P.yaw), 0, Math.cos(P.yaw));
   if (main) {
-    e.damage(35, { kb: _r.copy(fwd).multiplyScalar(14), stun: 1.6, skill: true });
+    const dmg = rl(0, 'dmg') ? 60 : 35, stun = rl(0, 'stun') ? 1.6 : 0;
+    e.damage(dmg, { kb: fwd.clone().multiplyScalar(14), stun, skill: true });
     sfx('bash'); hitStop = 0.11; cam.shake = Math.max(cam.shake, 0.6);
+    if (rl(0, 'aoe')) {
+      for (const o of enemies) {
+        if (o.dead || o === e || P.chargeHit.has(o) || flatDist(o.pos, e.pos) - o.r > 3.5) continue;
+        P.chargeHit.add(o);
+        const dir = V3(o.pos.x - e.pos.x, 0, o.pos.z - e.pos.z).normalize();
+        o.damage(dmg * 0.8, { kb: dir.multiplyScalar(12), stun, skill: true });
+        sparks(o.chest(V3()), 16, GOLD0, GOLD1, 7);
+      }
+      dustRing(e.pos, 3.5, 36, 7); sfx('boom', 0.5);
+    }
   } else {
-    const side = Math.sign(fwd.x * _d.z - fwd.z * _d.x) || 1;
-    e.damage(18, { kb: _r.set(-fwd.z * side, 0, fwd.x * side).multiplyScalar(-10).addScaledVector(fwd, 4), stun: 0.8, skill: true });
+    const d = V3(e.pos.x - P.pos.x, 0, e.pos.z - P.pos.z);
+    const side = Math.sign(fwd.x * d.z - fwd.z * d.x) || 1;
+    e.damage(18, { kb: V3(-fwd.z * side, 0, fwd.x * side).multiplyScalar(-10).addScaledVector(fwd, 4), skill: true });
     sfx('hit');
   }
   hero.shield.getWorldPosition(_r); sparks(_r, 26, GOLD0, GOLD1, 8); lightFlash(_r, 20, 0.2, 0xffc060);
 }
 // 2 点：投掷盾牌
-const SP = { active: false, phase: 'out', targets: [], last: [], idx: 0, t: 0, spin: 0, dest: V3(), pos: V3(), released: false };
+// plan：按顺序要命中的目标（可重复）；uniq：实际锁定的不同敌人
+const SP = { active: false, phase: 'out', plan: [], uniq: [], idx: 0, t: 0, total: 0, spin: 0, dest: V3(), pos: V3(), goal: V3(), via: null, lastHit: null, released: false };
 function startThrow() {
   P.state = 'throw'; P.t = 0; SP.released = false;
+  const n = 2 + rl(1, 'more');
   const first = pickTarget(22, cam.yaw, 1.2) || pickTarget(14, null, 9);
-  SP.targets = [];
+  const uniq = [];
   if (first) {
-    SP.targets.push(first);
-    const second = pickTarget(12, null, 9, first.pos, first);
-    if (second) SP.targets.push(second);
+    uniq.push(first);
+    while (uniq.length < n) {
+      const nx = pickTarget(12, null, 9, uniq[uniq.length - 1].pos, uniq);
+      if (!nx) break;
+      uniq.push(nx);
+    }
     P.yaw = yawTo(P.pos, first.pos);
   } else P.yaw = cam.yaw;
-  SP.last = SP.targets.map(e => e.chest(V3()));
+  const plan = [...uniq];
+  if (rl(1, 'force') && uniq.length) while (plan.length < n) plan.push(uniq[Math.floor(Math.random() * uniq.length)]);
+  SP.plan = plan; SP.uniq = uniq; SP.via = null; SP.lastHit = null;
   SP.dest.set(P.pos.x + Math.sin(P.yaw) * 16, 1.3, P.pos.z + Math.cos(P.yaw) * 16);
 }
+// 当前目标已死：有「强行打击」时换成随机存活的锁定目标，否则跳过
+function shieldTarget() {
+  while (SP.idx < SP.plan.length) {
+    const e = SP.plan[SP.idx];
+    if (!e.dead) return e;
+    const alive = SP.uniq.filter(u => !u.dead);
+    if (rl(1, 'force') && alive.length) { SP.plan[SP.idx] = alive[Math.floor(Math.random() * alive.length)]; continue; }
+    SP.idx++;
+  }
+  return null;
+}
+// 连续打同一个目标时，先飞到旁边的空处再折返
+function shieldDetour(e) {
+  const a = Math.random() * TAU;
+  SP.via = V3(e.pos.x + Math.cos(a) * 5, 1.6 + rand(0, 1.2), e.pos.z + Math.sin(a) * 5);
+}
 function releaseShield() {
-  SP.released = true; SP.active = true; SP.phase = 'out'; SP.idx = 0; SP.t = 0; SP.spin = 0;
+  SP.released = true; SP.active = true; SP.phase = 'out'; SP.idx = 0; SP.t = 0; SP.total = 0; SP.spin = 0;
   P.shieldOut = true; P.blocking = false;
   hero.shield.getWorldPosition(SP.pos);
   scene.attach(hero.shield); hero.shieldGlow.visible = true;
@@ -1263,22 +1397,33 @@ function releaseShield() {
 }
 function updateShield(dt) {
   if (!SP.active) return;
-  SP.t += dt; SP.spin += dt * 24;
+  SP.t += dt; SP.total += dt; SP.spin += dt * 24;
   let goal;
   if (SP.phase === 'out') {
-    const e = SP.targets[SP.idx];
-    if (e) { if (!e.dead) e.chest(SP.last[SP.idx]); goal = SP.last[SP.idx]; } else goal = SP.dest;
-    const speed = 30;
-    _d.subVectors(goal, SP.pos); const d = _d.length();
-    if (d < 0.6 + (e ? e.r * 0.5 : 0) || SP.t > 3) {
-      if (e && !e.dead && SP.t <= 3) {
-        e.damage(SP.idx === 0 ? 42 : 34, { kb: _r.copy(_d).setY(0).normalize().multiplyScalar(5), stun: 1.3, skill: true });
-        sfx('clang'); sfx('hit'); hitStop = 0.05; cam.shake = Math.max(cam.shake, 0.2);
-        sparks(SP.pos, 30, GOLD0, GOLD1, 9); lightFlash(SP.pos, 20, 0.2, 0xffc060);
-      }
-      SP.idx++;
-      if (!e || SP.idx >= SP.targets.length || SP.t > 3) { SP.phase = 'return'; SP.t = 0; }
-    } else SP.pos.addScaledVector(_d, Math.min(1, speed * dt / d));
+    const e = SP.plan.length ? shieldTarget() : null;
+    if (SP.plan.length && !e) { SP.phase = 'return'; SP.t = 0; }
+    else {
+      if (SP.via) goal = SP.via;
+      else if (e) goal = e.chest(SP.goal);
+      else goal = SP.dest;
+      _d.subVectors(goal, SP.pos); const d = _d.length();
+      const reach = SP.via ? 0.8 : 0.6 + (e ? e.r * 0.5 : 0);
+      if (d < reach || SP.t > 3 || SP.total > 9) {
+        if (SP.via) { SP.via = null; SP.t = 0; }
+        else {
+          if (e && SP.t <= 3) {
+            const stun = rl(1, 'stun') ? 0.7 : 0;
+            e.damage(SP.idx === 0 ? 40 : 32, { kb: _r.copy(_d).setY(0).normalize().multiplyScalar(5), stun, skill: true });
+            sfx('clang'); sfx('hit'); hitStop = 0.05; cam.shake = Math.max(cam.shake, 0.2);
+            sparks(SP.pos, 30, GOLD0, GOLD1, 9); lightFlash(SP.pos, 20, 0.2, 0xffc060);
+          }
+          SP.idx++; SP.t = 0; SP.lastHit = e;
+          const next = e ? shieldTarget() : null;
+          if (!next || SP.total > 9) { SP.phase = 'return'; SP.t = 0; }
+          else if (next === e) shieldDetour(e);
+        }
+      } else SP.pos.addScaledVector(_d, Math.min(1, 30 * dt / d));
+    }
   } else {
     hero.armL.wr.getWorldPosition(_r); goal = _r;
     const speed = 26 + SP.t * 20;
@@ -1323,8 +1468,13 @@ function updateOrbs(dt) {
 
 // ============ 玩家更新 ============
 const IDLE = { bodyY: 0, bodyX: 0, torX: 0.05, torY: -0.2, torZ: 0, headX: 0, rSx: -0.55, rSy: -0.35, rSz: 0, rWx: -0.9, rWy: 0, rWz: 0,
-  lSx: -0.35, lSy: 0.35, lSz: 0.15, lWx: 0.35, lWy: 0, lWz: 0, legL: 0, legR: 0, cape: 0.1 };
+  lSx: -0.35, lSy: 0.35, lSz: 0.15, lWx: 0.35, lWy: 0, lWz: 0, legL: 0, legR: 0, legLz: 0, legRz: 0, hipY: 0, cape: 0.1 };
 const cur = { ...IDLE };
+// 世界方向 → 角色局部（x 向右，z 向前）
+function toLocal(v, yaw) { const s = Math.sin(yaw), c = Math.cos(yaw); return [-v.x * c + v.z * s, v.x * s + v.z * c]; }
+// 8 方向 strafe 速度：前跑最快，侧移次之，后退最慢
+const strafeSpeed = (lx, lz) => 5.6 * Math.max(lz, 0) ** 2 + 3.8 * Math.min(lz, 0) ** 2 + 4.8 * lx * lx;
+P.mv = V3(); P.mvT = V3();
 function updatePlayer(dt) {
   P.dodgeCd -= dt; P.iframe -= dt; P.t += dt;
   P.flinch = Math.max(0, (P.flinch || 0) - dt * 5);
@@ -1333,23 +1483,24 @@ function updatePlayer(dt) {
   let speed = 0, tp = { ...IDLE }, sharp = 14;
   P.blocking = false;
   trail.on = false; whirlFx.g.visible = false;
+  P.mvT.set(0, 0, 0);
   const fwd = V3(Math.sin(P.yaw), 0, Math.cos(P.yaw));
 
   switch (P.state) {
     case 'move': {
       const wantBlock = rmb && !P.shieldOut;
+      P.yaw = dampAngle(P.yaw, cam.yaw, hasIn ? 14 : 9, dt);
+      if (hasIn) {
+        const [lx, lz] = toLocal(_d, P.yaw);
+        speed = strafeSpeed(lx, lz) * (wantBlock ? 0.42 : 1);
+        P.pos.addScaledVector(_d, speed * dt);
+        P.mvT.copy(_d).multiplyScalar(speed);
+      }
       if (wantBlock) {
         if (!P.wasBlocking) P.blockStart = now;
         P.blocking = true;
-        P.yaw = dampAngle(P.yaw, cam.yaw, 14, dt);
-        speed = hasIn ? 2.3 : 0;
-        if (hasIn) P.pos.addScaledVector(_d, speed * dt);
         Object.assign(tp, { lSx: -1.3, lSy: -0.7, lSz: 0, lWx: 1.3, lWy: 0.3, torY: 0.35, rSx: -0.3, rSy: -0.7, rWx: -1.1, bodyY: -0.08, torX: 0.12 });
         sharp = 26;
-      } else if (hasIn) {
-        speed = 5.6;
-        P.yaw = dampAngle(P.yaw, Math.atan2(_d.x, _d.z), 14, dt);
-        P.pos.addScaledVector(_d, speed * dt);
       }
       break;
     }
@@ -1366,8 +1517,11 @@ function updatePlayer(dt) {
     }
     case 'dodge': {
       const k = P.t / 0.34;
+      P.yaw = dampAngle(P.yaw, cam.yaw, 9, dt);
       P.pos.addScaledVector(P.dodgeDir, lerp(14, 3, k) * dt);
-      Object.assign(tp, { bodyY: -0.3, torX: 0.55, legL: 0.8, legR: -0.6, rSx: -0.3, lSx: -0.9, lWx: 0.9 }); sharp = 20;
+      const [lx, lz] = toLocal(P.dodgeDir, P.yaw), ax = Math.abs(lx);
+      Object.assign(tp, { bodyY: -0.3, torX: 0.55 * Math.max(lz, 0) - 0.3 * Math.max(-lz, 0), torZ: lx * 0.35,
+        legL: 0.7 * lz, legR: -0.5 * lz, legLz: 0.35 * ax, legRz: -0.35 * ax, rSx: -0.3, lSx: -0.9, lWx: 0.9 }); sharp = 20;
       if (Math.random() < 0.6) dust.emit(P.pos.x, 0.1, P.pos.z, rand(-1, 1), 0.5, rand(-1, 1), 0.5, 0.3, 0.8, DUST0, DUST1, 0, 2, 0.4);
       if (P.t >= 0.34) P.state = 'move';
       break;
@@ -1411,9 +1565,13 @@ function updatePlayer(dt) {
       break;
     }
     case 'whirl': {
-      const DUR = 3;
+      const DUR = 3 + rl(2, 'spin');
       P.spin += dt * (P.t < 0.2 ? P.t * 80 : 17);
-      if (hasIn) { speed = 3.8; P.pos.addScaledVector(_d, speed * dt); P.yaw = dampAngle(P.yaw, Math.atan2(_d.x, _d.z), 4, dt); }
+      P.yaw = dampAngle(P.yaw, cam.yaw, 9, dt);
+      if (hasIn) {
+        const [lx, lz] = toLocal(_d, P.yaw);
+        speed = strafeSpeed(lx, lz) * 0.7; P.pos.addScaledVector(_d, speed * dt); P.mvT.copy(_d).multiplyScalar(speed);
+      }
       Object.assign(tp, { rSx: -1.5, rSy: -1.55, rWx: -0.15, lSx: -1.3, lSy: 1.4, lWx: 1.3, torX: 0.05, torY: 0, bodyY: -0.12 }); sharp = 22;
       P.whirlTick -= dt;
       if (P.whirlTick <= 0 && P.t < DUR) {
@@ -1423,7 +1581,7 @@ function updatePlayer(dt) {
           if (e.dead || e.pos.y > 2) continue;
           if (flatDist(P.pos, e.pos) - e.r < 3.3) {
             _r.set(e.pos.x - P.pos.x, 0, e.pos.z - P.pos.z).normalize();
-            e.damage(13, { kb: _r.clone().multiplyScalar(2.2), stun: e.isBoss ? 0 : 0.3, skill: true });
+            e.damage(13, { kb: _r.clone().multiplyScalar(2.2), stun: !e.isBoss && rl(2, 'stun') ? 0.6 : 0, skill: true });
             e.chest(_f); sparks(_f, 6, [1, 0.8, 0.5], [1, 0.3, 0.05], 6); blood(_f, 4, _r);
             n++;
           }
@@ -1446,17 +1604,27 @@ function updatePlayer(dt) {
   if (P.state !== 'charge') chargeGlow.scale.setScalar(0);
   trail.mat.uniforms.uC.value.setHex(P.state === 'whirl' ? 0xffa050 : 0xfff0c0);
 
-  // 走路摆动
-  P.moveSpeed = damp(P.moveSpeed, speed, 12, dt);
-  const run = Math.min(1, P.moveSpeed / 5);
-  P.walk += P.moveSpeed * dt * 2.1;
-  if (['move', 'whirl'].includes(P.state) && run > 0.02) {
-    const s = Math.sin(P.walk);
-    tp.legL += s * 0.7 * run; tp.legR -= s * 0.7 * run;
+  // 8 方向 blendspace：按局部速度混合 前跑 / 后退 / 左右侧移 四组下半身动作
+  P.mv.x = damp(P.mv.x, P.mvT.x, 10, dt); P.mv.z = damp(P.mv.z, P.mvT.z, 10, dt);
+  const [vx, vz] = toLocal(P.mv, P.yaw), spd = Math.hypot(vx, vz);
+  P.moveSpeed = spd;
+  const run = Math.min(1, spd / 5);
+  P.walk += spd * dt * 2.1;
+  if (['move', 'whirl'].includes(P.state) && spd > 0.1) {
+    const nx = vx / spd, nz = vz / spd;
+    let wF = Math.max(nz, 0), wB = Math.max(-nz, 0), wS = Math.abs(nx);
+    const sum = wF + wB + wS; wF /= sum; wB /= sum; wS /= sum;
+    const s = Math.sin(P.walk), up = Math.max(0, s), dn = Math.max(0, -s);
+    tp.legL += s * 0.75 * wF * run; tp.legR -= s * 0.75 * wF * run; tp.torX += 0.14 * wF * run;
+    tp.legL -= s * 0.5 * wB * run; tp.legR += s * 0.5 * wB * run; tp.torX -= 0.06 * wB * run;
+    if (nx > 0) { tp.legRz -= 0.42 * up * wS * run; tp.legLz -= 0.22 * dn * wS * run; }
+    else { tp.legLz += 0.42 * up * wS * run; tp.legRz += 0.22 * dn * wS * run; }
+    tp.legL += 0.15 * (nx > 0 ? dn : up) * wS * run; tp.legR += 0.15 * (nx > 0 ? up : dn) * wS * run;
+    tp.torZ += Math.sign(nx) * 0.07 * wS * run;
+    tp.hipY = -nx * nz * 0.9;
     tp.bodyY += Math.abs(Math.cos(P.walk)) * 0.06 * run - 0.03 * run;
-    tp.torX += 0.12 * run;
-    if (!P.blocking && P.state === 'move') { tp.rSx += s * 0.3 * run; tp.lSx -= s * 0.3 * run; }
-    tp.cape = 0.1 + 0.5 * run;
+    if (!P.blocking && P.state === 'move') { const a = s * 0.3 * run * (wF + wB); tp.rSx += a; tp.lSx -= a; }
+    tp.cape = 0.1 + 0.5 * run * (wF + wS * 0.5) + 0.05 * wB;
   }
   tp.torX -= P.flinch * 0.3;
   for (const k in cur) cur[k] = damp(cur[k], tp[k], sharp, dt);
@@ -1466,7 +1634,7 @@ function updatePlayer(dt) {
   hero.head.rotation.set(cur.headX - cur.torX * 0.5, -cur.torY * 0.5, 0);
   hero.armR.sh.rotation.set(cur.rSx, cur.rSy, cur.rSz); hero.armR.wr.rotation.set(cur.rWx, cur.rWy, cur.rWz);
   hero.armL.sh.rotation.set(cur.lSx, cur.lSy, cur.lSz); hero.armL.wr.rotation.set(cur.lWx, cur.lWy, cur.lWz);
-  hero.legL.rotation.x = cur.legL; hero.legR.rotation.x = cur.legR;
+  hero.legL.rotation.set(cur.legL, cur.hipY, cur.legLz); hero.legR.rotation.set(cur.legR, cur.hipY, cur.legRz);
   hero.cape.rotation.x = cur.cape;
   hero.root.rotation.y = P.yaw;
   const sf = hero.shieldFlash + (P.blocking ? 0.12 : 0);
@@ -1481,15 +1649,17 @@ function updatePlayer(dt) {
 
 // ============ 波次 ============
 const WAVES = [
-  { name: '第一波', sub: '半兽人斥候', orcs: 3 },
-  { name: '第二波', sub: '半兽人战团', orcs: 5 },
-  { name: '首领战', sub: '半兽统领 · 格鲁克', orcs: 2, boss: true },
+  { name: '第一波', sub: '半兽人斥候', orcs: 3, warriors: 0 },
+  { name: '第二波', sub: '半兽战士现身', orcs: 4, warriors: 1 },
+  { name: '第三波', sub: '半兽人战团', orcs: 4, warriors: 2 },
+  { name: '第四波', sub: '精锐先锋', orcs: 3, warriors: 3 },
+  { name: '首领战', sub: '半兽统领 · 格鲁克', orcs: 2, warriors: 1, boss: true },
 ];
-let wave = -1, waveTimer = 2.5, victory = false;
+let wave = -1, waveTimer = 2.5, victory = false, pendingSpawns = 0, spawnGen = 0;
 function updateWaves(dt) {
   if (victory || P.dead) return;
   const alive = enemies.some(e => !e.dead);
-  if (alive) return;
+  if (alive || pendingSpawns > 0) return;
   if (wave === WAVES.length - 1) {
     victory = true; gameOver = true;
     setTimeout(() => { $('end').className = 'win'; $('end').innerHTML = '胜 利<small>按 Enter 再来一局</small>'; }, 2500);
@@ -1501,7 +1671,14 @@ function updateWaves(dt) {
   const W = WAVES[wave];
   banner(W.name, W.sub, 2.5);
   if (wave > 0) { const h = Math.round(P.maxHp * 0.35); P.hp = Math.min(P.maxHp, P.hp + h); floater(V3(P.pos.x, 2.3, P.pos.z), `+${h}`, 'heal'); }
-  for (let i = 0; i < W.orcs; i++) setTimeout(() => !P.dead && spawnEnemy('orc'), i * 450);
+  const list = [...Array(W.orcs).fill('orc'), ...Array(W.warriors).fill('warrior')];
+  const gen = spawnGen;
+  pendingSpawns = list.length;
+  list.forEach((type, i) => setTimeout(() => {
+    if (gen !== spawnGen) return;
+    pendingSpawns--;
+    if (!P.dead) spawnEnemy(type);
+  }, i * 450));
   if (W.boss) { const b = spawnEnemy('boss'); sfx('roar'); $('boss').style.display = 'block'; bossRef = b; }
   waveTimer = 3;
 }
@@ -1511,9 +1688,10 @@ function resetGame() {
   for (const e of enemies) e.remove(); enemies.length = 0;
   for (const o of orbs) scene.remove(o.s); orbs.length = 0;
   if (SP.active) catchShield();
-  Object.assign(P, { hp: P.maxHp, rage: 0, points: 0, state: 'move', t: 0, dead: false, shieldOut: false, kills: 0, blocking: false, lastCombat: -99, spin: 0 });
+  Object.assign(P, { hp: P.maxHp, rage: 0, points: 0, state: 'move', t: 0, dead: false, shieldOut: false, kills: 0, blocking: false, lastCombat: -99, spin: 0, xp: 0, sp: 0 });
+  runeLv.forEach(r => { for (const k in r) delete r[k]; });
   P.pos.set(0, 0, 0); P.yaw = Math.PI; cam.yaw = Math.PI;
-  wave = -1; waveTimer = 2; victory = false; gameOver = false; bossRef = null;
+  wave = -1; waveTimer = 2; victory = false; gameOver = false; bossRef = null; pendingSpawns = 0; spawnGen++;
   $('end').className = ''; $('boss').style.display = 'none';
   if (!locked && !freeMouse) requestLock(); else setPaused(false);
 }
@@ -1527,6 +1705,9 @@ function updateHUD() {
   $('ragebar').classList.toggle('max', P.points >= 3);
   $('ragebar').querySelector('span').textContent = P.points >= 3 ? '怒气点已满' : '';
   gemEls.forEach((g, i) => g.classList.toggle('on', i < P.points));
+  $('xpf').style.width = (P.xp / XP_PER_POINT * 100) + '%';
+  $('spt').textContent = `技能点 ${P.sp}`;
+  $('xpr').classList.toggle('has', P.sp > 0);
   skEls.forEach((el, i) => {
     const lock = skillLock(i);
     el.classList.toggle('ready', lock === null);
@@ -1575,10 +1756,17 @@ function updateCamera(dt) {
 
 // ============ 主循环 ============
 const clock = new THREE.Clock();
-let fireflyT = 0;
+let fireflyT = 0, fpsFrames = 0, fpsT = 0;
 function tick() {
   requestAnimationFrame(tick);
-  const rdt = Math.min(0.05, clock.getDelta());
+  const raw = clock.getDelta(), rdt = Math.min(0.05, raw);
+  fpsFrames++; fpsT += raw;
+  if (fpsT >= 0.5) {
+    const fps = fpsFrames / fpsT, el = $('fps');
+    el.textContent = `FPS ${fps.toFixed(0)}  ${(1000 / fps).toFixed(1)}ms`;
+    el.style.color = fps >= 55 ? '#9fe09f' : fps >= 30 ? '#ffd060' : '#ff6a5a';
+    fpsFrames = 0; fpsT = 0;
+  }
   if (started && !paused && !window.__freeze) {
     let dt = rdt;
     if (hitStop > 0) { hitStop -= rdt; dt = rdt * 0.06; }
@@ -1620,7 +1808,7 @@ btn.addEventListener('click', () => {
   requestLock();
   setPaused(false);
 });
-window.__dbg = { P, enemies, cam, spawnEnemy, addRage, hero };
+window.__dbg = { P, enemies, cam, spawnEnemy, addRage, hero, runeLv, SP };
 </script>
 </body>
 </html>
