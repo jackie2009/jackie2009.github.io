@@ -342,6 +342,36 @@ const colliders = []; // {x,z,r}
   }
 }
 
+// ============ 战斗边界：魔法墙 ============
+const WALL_R = ARENA_R + 0.5, WALL_H = 2;
+const wallMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uP: { value: V3() } },
+  vertexShader: `varying vec2 vUv; varying vec3 vW;
+void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: `uniform float uTime; uniform vec3 uP; varying vec2 vUv; varying vec3 vW;
+void main(){
+  float h=vUv.y;
+  float fade=pow(1.0-h,1.6);
+  float streak=0.5+0.5*sin(vUv.x*720.0+sin(vUv.x*90.0+uTime*0.7)*3.0-uTime*1.2);
+  float wave=0.5+0.5*sin(h*14.0-uTime*2.5+vUv.x*160.0);
+  float rune=smoothstep(0.9,1.0,sin(vUv.x*240.0)*sin(h*9.0-uTime*1.5));
+  float base=smoothstep(0.14,0.0,h);
+  float near=smoothstep(5.0,0.0,distance(vW.xz,uP.xz));
+  float a=fade*(0.34+0.32*streak*wave+0.6*rune)+base*0.8;
+  a*=1.0+near*1.8;
+  vec3 col=mix(vec3(0.25,0.62,1.0),vec3(0.8,0.96,1.0),clamp(streak*wave*0.6+rune+base*0.5+near*0.4,0.0,1.0));
+  gl_FragColor=vec4(col,clamp(a,0.0,1.0));
+}`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+});
+{
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(WALL_R, WALL_R, WALL_H, 192, 1, true), wallMat);
+  wall.position.y = WALL_H / 2; wall.renderOrder = 2; scene.add(wall);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(WALL_R - 0.12, WALL_R + 0.12, 192),
+    new THREE.MeshBasicMaterial({ color: 0x5ab8ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; scene.add(ring);
+}
+
 // ============ 粒子系统 ============
 const PV = `attribute vec4 pcolor; attribute float psize; uniform float uScale; varying vec4 vC;
 void main(){ vC=pcolor; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=psize*uScale/max(-mv.z,0.1); gl_Position=projectionMatrix*mv; }`;
@@ -738,7 +768,9 @@ const SKILLS = [
 
 // ============ 输入 / 镜头 ============
 const cam = { yaw: Math.PI, pitch: -0.3, dist: 7, fov: 60, shake: 0, target: V3(0, 1.6, 0) };
-const keys = {}; let lmb = false, rmb = false, locked = false, freeMouse = false, started = false, paused = true, gameOver = false;
+// ?nolock 仅用于不支持 Pointer Lock 的调试环境
+const keys = {}; let lmb = false, rmb = false, locked = false, started = false, paused = true, gameOver = false;
+const freeMouse = new URLSearchParams(location.search).has('nolock');
 const SENS = 0.0022;
 let now = 0, hitStop = 0;
 
@@ -760,7 +792,8 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.code] = false; });
 canvas.addEventListener('mousedown', e => {
   if (!started) return;
-  if (paused) { if (!gameOver) requestLock(); return; }
+  if (!locked && !freeMouse) { requestLock(); return; }
+  if (paused) { if (freeMouse && !gameOver) setPaused(false); return; }
   if (e.button === 0) { lmb = true; onAttackPress(); }
   if (e.button === 2) rmb = true;
 });
@@ -771,21 +804,33 @@ addEventListener('mousemove', e => {
   cam.yaw -= e.movementX * SENS;
   cam.pitch = clamp(cam.pitch - e.movementY * SENS, -1.0, 0.25);
 });
+// 游戏中必须锁定鼠标（隐藏光标、无边界、移不出窗口）；未锁定即暂停，点击画面重新锁定
 function requestLock() {
-  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { freeMouse = true; if (!runeOpen) setPaused(false); }); }
-  catch (e) { freeMouse = true; }
-  setTimeout(() => { if (!locked && !runeOpen) { freeMouse = true; setPaused(false); } }, 400);
+  if (freeMouse) { setPaused(false); return; }
+  if (locked) return;
+  let p;
+  try { p = canvas.requestPointerLock({ unadjustedMovement: true }); } catch (e) { p = null; }
+  if (p && p.catch) p.catch(err => {
+    // 部分系统不支持原始输入，退回普通锁定
+    if (err && err.name === 'NotSupportedError') {
+      const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(lockFailed);
+    } else lockFailed();
+  });
+}
+function lockFailed() {
+  if (locked || runeOpen || gameOver) return;
+  banner('已暂停', '鼠标锁定失败：刚按过 Esc 需等约 1 秒再点击画面；Cursor 内置浏览器不支持鼠标锁定，请用 Chrome / Edge 打开', 9999);
 }
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
-  if (locked) { freeMouse = false; if (!runeOpen) setPaused(false); }
+  if (locked) { if (!runeOpen) setPaused(false); }
   else if (started && !gameOver) setPaused(true);
 });
-document.addEventListener('pointerlockerror', () => { freeMouse = true; if (!runeOpen) setPaused(false); });
+document.addEventListener('pointerlockerror', lockFailed);
 function setPaused(v) {
   paused = v; document.body.classList.toggle('playing', !v);
   lmb = rmb = false;
-  if (v && !gameOver && !runeOpen) banner('已暂停', '点击画面继续', 9999);
+  if (v && !gameOver && !runeOpen) banner('已暂停', '点击画面锁定鼠标并继续', 9999);
   else if (bannerTimer > 100) { bannerTimer = 0.01; }
 }
 
@@ -825,10 +870,18 @@ class Enemy {
     }
   }
   chest(out) { return out.set(this.pos.x, this.pos.y + 1.35 * this.T.scale, this.pos.z); }
-  canInterrupt() { return !this.isBoss || ['chase', 'cleave', 'slam', 'recover', 'tired'].includes(this.state); }
-  setStun(s) {
+  // 首领出招期间霸体：英雄技能/重击不能打断或眩晕；完美格挡仍可弹反普通重劈
+  canInterrupt(src = 'skill') {
+    if (!this.isBoss) return true;
+    const free = ['chase', 'recover', 'tired'];
+    return free.includes(this.state) || (src === 'parry' && this.state === 'cleave');
+  }
+  setStun(s, src = 'skill') {
     if (this.dead) return;
-    if (this.isBoss && !this.canInterrupt()) return;
+    if (this.isBoss && !this.canInterrupt(src)) {
+      if (now - (this.armorMsgT || -9) > 1) { this.armorMsgT = now; floater(this.chest(V3()).setY(this.pos.y + 3.8), '霸体', 'info'); }
+      return;
+    }
     killTele(this.teleMesh); this.teleMesh = null; this.tele = 0;
     this.stun = Math.max(this.stun, s); this.state = 'stun'; this.st = 0;
   }
@@ -841,7 +894,7 @@ class Enemy {
     this.hp -= amt; this.flash = 1; this.flinch = 1;
     const fp = this.chest(V3()); fp.y += 0.3;
     floater(fp, amt, crit ? 'crit' : (o.skill ? 'skill' : ''));
-    if (o.kb) this.kb.addScaledVector(o.kb, this.isBoss ? 0.12 : 1);
+    if (o.kb) this.kb.addScaledVector(o.kb, this.isBoss ? (this.canInterrupt() ? 0.12 : 0) : 1);
     if (o.stun) this.setStun(this.isBoss ? o.stun * 0.6 : o.stun);
     if (this.hp <= 0) this.die();
     return amt;
@@ -879,7 +932,7 @@ class Enemy {
     else speed = this.orcAI(dt, dist, want);
 
     // 碰撞
-    if (this.pos.y < 0.01) collide(this.pos, this.r, 30);
+    if (this.pos.y < 0.01) collide(this.pos, this.r, ARENA_R + P.r - this.r);
     this.root.rotation.y = this.yaw;
     this.walk += speed * dt * 2.4;
     this.animate(dt, speed);
@@ -1084,10 +1137,14 @@ class Enemy {
 }
 
 function spawnEnemy(type) {
-  let a = 0;
-  for (let k = 0; k < 20; k++) { a = Math.random() * TAU; if (Math.abs(wrapAngle(a - Math.atan2(P.pos.z, P.pos.x))) > 1.2) break; }
-  const r = type === 'boss' ? 27 : 29;
-  const e = new Enemy(type, Math.cos(a) * r, Math.sin(a) * r);
+  const r = type === 'boss' ? 22 : 24;
+  let x = 0, z = 0;
+  for (let k = 0; k < 30; k++) {
+    const a = Math.random() * TAU; x = Math.cos(a) * r; z = Math.sin(a) * r;
+    if (Math.hypot(x - P.pos.x, z - P.pos.z) > 12) break;
+  }
+  const e = new Enemy(type, x, z);
+  sparks(V3(x, 1.2, z), 30, [0.7, 0.92, 1], [0.2, 0.5, 1], 6); lightFlash(V3(x, 1.5, z), 18, 0.4, 0x5ab8ff);
   if (type === 'boss') { e.whirlFx = makeSwoosh(0xff3010, 3.6); e.whirlFx.g.position.y = 1.6; e.root.add(e.whirlFx.g); }
   enemies.push(e);
   dustRing(e.pos, 1.5, 16, 3);
@@ -1204,7 +1261,7 @@ function openRunes() {
 }
 function closeRunes() {
   runeOpen = false; $('runes').classList.remove('open');
-  if (freeMouse) setPaused(false); else requestLock();
+  if (freeMouse) setPaused(false); else { setPaused(true); requestLock(); }
 }
 
 // ============ 玩家受击 ============
@@ -1221,7 +1278,7 @@ function hitPlayer(dmg, src, o = {}) {
       floater(V3(P.pos.x, P.pos.y + 2.3, P.pos.z), '完美格挡', 'perfect');
       sparks(_r, 36, [1, 1, 0.8], [1, 0.7, 0.2], 9); lightFlash(_r, 25, 0.25, 0xffe080);
       addRage(22);
-      if (src.setStun) src.setStun(src.isBoss ? 1.4 : 1.5);
+      if (src.setStun) src.setStun(src.isBoss ? 1.4 : 1.5, 'parry');
       hero.shieldFlash = 1;
       return;
     }
@@ -1413,7 +1470,7 @@ function updateShield(dt) {
         else {
           if (e && SP.t <= 3) {
             const stun = rl(1, 'stun') ? 0.7 : 0;
-            e.damage(SP.idx === 0 ? 40 : 32, { kb: _r.copy(_d).setY(0).normalize().multiplyScalar(5), stun, skill: true });
+            e.damage(SP.idx === 0 ? 60 : 48, { kb: _r.copy(_d).setY(0).normalize().multiplyScalar(5), stun, skill: true });
             sfx('clang'); sfx('hit'); hitStop = 0.05; cam.shake = Math.max(cam.shake, 0.2);
             sparks(SP.pos, 30, GOLD0, GOLD1, 9); lightFlash(SP.pos, 20, 0.2, 0xffc060);
           }
@@ -1693,7 +1750,7 @@ function resetGame() {
   P.pos.set(0, 0, 0); P.yaw = Math.PI; cam.yaw = Math.PI;
   wave = -1; waveTimer = 2; victory = false; gameOver = false; bossRef = null; pendingSpawns = 0; spawnGen++;
   $('end').className = ''; $('boss').style.display = 'none';
-  if (!locked && !freeMouse) requestLock(); else setPaused(false);
+  if (locked || freeMouse) setPaused(false); else requestLock();
 }
 
 // ============ HUD ============
@@ -1771,6 +1828,7 @@ function tick() {
     let dt = rdt;
     if (hitStop > 0) { hitStop -= rdt; dt = rdt * 0.06; }
     now += dt;
+    wallMat.uniforms.uTime.value = now; wallMat.uniforms.uP.value.copy(P.pos);
     updatePlayer(dt);
     for (let i = enemies.length - 1; i >= 0; i--) if (!enemies[i].update(dt)) { enemies[i].remove(); enemies.splice(i, 1); }
     separate();
@@ -1806,7 +1864,6 @@ btn.addEventListener('click', () => {
   $('overlay').style.display = 'none';
   started = true;
   requestLock();
-  setPaused(false);
 });
 window.__dbg = { P, enemies, cam, spawnEnemy, addRage, hero, runeLv, SP };
 </script>
