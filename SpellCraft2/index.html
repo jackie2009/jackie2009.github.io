@@ -570,6 +570,25 @@ function initAudio() {
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   } catch (e) { AC = null; }
 }
+// 音频解锁：浏览器（尤其是放到服务器 / 被 iframe 嵌入 / Safari）可能让 AudioContext 一直处于 suspended，
+// 所以每次用户点击或按键都尝试恢复，并在 Safari 上播一段静音 buffer 完成解锁。
+let audioUnlocked = false;
+function unlockAudio() {
+  initAudio(); if (!AC) return;
+  if (AC.state !== 'running') AC.resume().catch(() => {});
+  if (!audioUnlocked) {
+    try { const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0); audioUnlocked = true; } catch (e) {}
+  }
+  updateSoundBadge();
+}
+['pointerdown', 'mousedown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, unlockAudio, { capture: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && AC && AC.state !== 'running') AC.resume().catch(() => {}); });
+const soundBadge = document.createElement('div');
+soundBadge.style.cssText = 'position:fixed;right:18px;top:52px;z-index:50;display:none;font-size:12px;color:#ffd6a8;background:rgba(60,12,0,.75);border:1px solid #a8642a;padding:4px 10px;pointer-events:none';
+soundBadge.textContent = '声音未开启：点一下画面；仍无声请检查浏览器是否把本网站静音';
+document.body.appendChild(soundBadge);
+function updateSoundBadge() { soundBadge.style.display = AC && AC.state !== 'running' && audioUnlocked ? 'block' : (AC ? 'none' : soundBadge.style.display); }
+setInterval(() => { if (AC) { if (AC.state !== 'running') AC.resume().catch(() => {}); updateSoundBadge(); } }, 1500);
 function sfx(type, vol = 1) {
   if (!AC || vol <= 0.01) return;
   const t = AC.currentTime, out = AC.createGain(); out.connect(AC.destination);
@@ -819,10 +838,7 @@ function setPaused(v) {
 function lockPointer() {
   const fail = () => document.dispatchEvent(new Event('pointerlockerror'));
   const plain = () => { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(fail); } catch (e) { fail(); } };
-  try {
-    const r = canvas.requestPointerLock({ unadjustedMovement: true });
-    if (r && r.catch) r.catch(plain);
-  } catch (e) { plain(); }
+  plain(); // mac 版 Chrome 不支持 unadjustedMovement，直接普通锁定
 }
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
@@ -842,7 +858,7 @@ function edgeTurn(dt) {
   cam.pitch = clamp(cam.pitch - clamp(ey, -1.5, 1.5) * 1.4 * dt, -0.75, 0.6);
 }
 $('startBtn').addEventListener('click', () => {
-  initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+  unlockAudio();
   if (!started) { started = true; setTimeout(() => banner('沃玛森林', '清剿半兽人', 3), 300); }
   if (freeMouse) { setPaused(false); lockPointer(); } else lockPointer();
 });
