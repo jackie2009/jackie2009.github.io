@@ -104,6 +104,19 @@
   .floater.fren{color:#ff5a3a;font-size:30px;letter-spacing:2px}
   .floater.warn{color:#ff7a2a;font-size:26px;font-weight:900}
   .floater.heal{color:#7dff8a;font-size:16px}
+  .floater.loot{color:#ffe08a;font-size:18px}
+  .lootLabel{position:absolute;left:0;top:0;font-size:13px;font-weight:bold;white-space:nowrap;text-shadow:0 0 3px #000,0 1px 2px #000;
+    background:rgba(10,6,2,.55);padding:1px 6px;border:1px solid currentColor}
+  #lootCard{position:fixed;left:50%;bottom:200px;transform:translateX(-50%);display:none;pointer-events:none;min-width:330px;
+    padding:10px 14px;background:linear-gradient(rgba(36,24,12,.94),rgba(18,12,6,.94));border:1px solid #9a7a32;font-size:13px;line-height:1.7;color:#e6dcc4;
+    box-shadow:0 0 18px rgba(0,0,0,.8)}
+  #lootCard .nm{font-size:16px;font-weight:bold}
+  #lootCard .tr{color:#ffcf8a}#lootCard .cur{color:#9a917e;font-size:12px}
+  #lootCard .up{color:#5ee05e;font-weight:bold}#lootCard .dn{color:#ff5a4a;font-weight:bold}#lootCard .eq{color:#ccc}
+  #lootCard .k{margin-top:4px;color:#fff2c0}#lootCard b{color:#fff2c0}
+  #weapon{position:fixed;right:18px;bottom:18px;width:250px;padding:8px 12px;font-size:12px;line-height:1.65;color:#d9c79a;pointer-events:none;
+    background:rgba(20,12,6,.6);border:1px solid rgba(201,162,60,.4)}
+  #weapon .nm{font-size:15px;font-weight:bold}#weapon .tr{color:#ffcf8a}#weapon b{color:#fff2c0}
   .floater.shield{color:#9cc8ff;font-size:17px}
   .orb .sh{position:absolute;left:0;right:0;height:0;background:linear-gradient(rgba(200,225,255,.85),rgba(90,150,255,.7));box-shadow:0 0 8px #8ab8ff}
   .orb span{flex-direction:column;line-height:1.25}
@@ -166,13 +179,15 @@
 <div id="kills">击杀<b>0</b></div>
 <div id="help"><b>WASD</b> 移动　<b>鼠标</b> 转镜头　<b>左键</b> 选中准星下的敌人　<b>Tab</b> 切换目标<br>
 <b>站定</b>在目标身边会自动攻击（移动时不出招）<br>
-<b>Q</b> 裂斩　<b>E</b> 斩首　<b>R</b> 旋风斩（狂怒时）　<b>空格</b> 护盾（2 点）　<b>Esc</b> 暂停</div>
+<b>Q</b> 裂斩　<b>E</b> 斩首　<b>R</b> 旋风斩（狂怒时）　<b>空格</b> 护盾（2 点）<br><b>F</b> 拾取 / 换武器　<b>Esc</b> 暂停</div>
 <div id="mouseWarn">鼠标未能锁定：点击画面重试；光标靠近屏幕边缘会自动转向</div>
 <div id="banner"></div>
 <div id="err"></div>
 <div id="shTag"></div>
 <div id="log"></div>
 <div id="buffs"></div>
+<div id="lootCard"></div>
+<div id="weapon"></div>
 <div id="bottom">
   <div class="orb"><div class="fill"></div><div class="sh"></div><span>520/520</span></div>
   <div class="midbar">
@@ -200,6 +215,7 @@
     <tr><td><b>R 旋风斩</b>（应对【狂怒】的临时牌）</td><td>免费</td><td>只在狂怒时出现，打身边所有敌人各 30，<b>每打到一个 +15 怒气</b>：人越多越赚</td></tr>
     <tr><td><b>空格 护盾</b>（防守牌）</td><td>2 点</td><td>头顶出现护盾，<b>吸收伤害总量 = 最大生命的一半</b>，持续 30 秒；打空提前消失。被吸收的伤害照样产生怒气。半兽人每 3 刀一次<b>重击（橙光预警）</b>，伤害 2.5 倍</td></tr>
   </table>
+  <p><b>武器：</b>半兽人会掉落<b>战锤 / 战斧 / 长戟 / 钉头锤 / 屠刀 / 重剑</b>，走过去按 <b>F</b> 换上（旧武器留在地上，随时换回）。品质 白→绿→蓝→紫→橙，每档伤害约 +15%，最高 ×1.7；不同类型攻速和特性不同。</p>
   <p><b>思路：</b>点数只有 3 个，要在“摸牌 / 兑现 / 保命”之间分配：破绽留 1 点打斩首；狂怒等敌人扎堆再旋风；被围或首领出现时花 2 点开护盾。三个点全花在裂斩上，摸到破绽却没点可用，就亏了。</p>
   <button id="startBtn" disabled>加载中…</button>
   <div id="loadmsg"></div>
@@ -963,9 +979,134 @@ function computeAim() {
 }
 
 
+// ============ 武器：类型 / 品质 / 模型 / 掉落 ============
+// 品质：每升一档伤害约 +15%，封顶 ×1.7（不会数值爆炸）
+const RARITY = [
+  { name: '普通', pre: '生锈的', css: '#d8d8d8', hex: 0xdddddd, power: 1.00 },
+  { name: '优秀', pre: '精炼',   css: '#5ee05e', hex: 0x4ade4a, power: 1.15 },
+  { name: '精良', pre: '淬火',   css: '#4aa8ff', hex: 0x3a8cff, power: 1.32 },
+  { name: '史诗', pre: '沃玛',   css: '#c070ff', hex: 0xb050ff, power: 1.50 },
+  { name: '传说', pre: '嗜血',   css: '#ff9a30', hex: 0xff8a20, power: 1.70 },
+];
+// 类型：攻速不同（慢武器单刀更重、怒气按攻速折算，秒伤相同），各带一个和出牌循环相关的特性
+const WTYPES = {
+  sword:   { name: '重剑',   swing: 2.0, trait: '裂斩触发【破绽】概率 30% → 36%' },
+  axe:     { name: '战斧',   swing: 2.2, trait: '暴击率 10% → 20%' },
+  hammer:  { name: '战锤',   swing: 2.6, trait: '普攻 15% 几率震晕目标 0.6 秒' },
+  mace:    { name: '钉头锤', swing: 2.3, trait: '普攻命中回复 1.5% 生命' },
+  halberd: { name: '长戟',   swing: 2.4, trait: '攻击距离 +0.6 米' },
+  cleaver: { name: '屠刀',   swing: 1.8, trait: '普攻怒气 +20%' },
+};
+const WTYPE_KEYS = Object.keys(WTYPES);
+function makeWeapon(type, tier) {
+  const R = RARITY[tier], T = WTYPES[type];
+  const power = +(R.power * (tier ? rand(0.97, 1.03) : 1)).toFixed(3);
+  return { type, tier, power, name: R.pre + T.name, swing: T.swing };
+}
+function weaponStats(w) {
+  const avg = 14 * w.power * w.swing / 2; // 慢武器单刀更重，秒伤只看品质
+  return { lo: Math.round(avg * 0.9), hi: Math.round(avg * 1.1), dps: 7 * w.power };
+}
+
+// ---- 模型（全部程序化；武器沿 -Y 方向伸出，握点在原点）----
+function wMats(tier) {
+  const metal = [0x7a6a58, 0xaab2ba, 0xbfd0e2, 0x7e6ea6, 0xd0a850][tier];
+  return {
+    metal: std(metal, { metalness: 0.85, roughness: tier ? 0.3 : 0.65 }),
+    dark: std(0x3a3c42, { metalness: 0.7, roughness: 0.45 }),
+    wood: std(0x4a3020, { roughness: 0.9 }), wrap: std(0x2a1a12, { roughness: 0.9 }),
+    gold: std(0xc89a3a, { metalness: 0.8, roughness: 0.3 }),
+    gem: new THREE.MeshStandardMaterial({ color: RARITY[tier].hex, emissive: RARITY[tier].hex, emissiveIntensity: tier >= 2 ? 1.6 : 0.25, roughness: 0.2 }),
+  };
+}
+const extr = (shape, depth) => { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.008, bevelSegments: 1 }); g.translate(0, 0, -depth / 2); return g; };
+function crescent(r = 0.4, h = 0.3) { // 斧刃：月牙形
+  const s = new THREE.Shape();
+  s.moveTo(0, h * 0.6); s.quadraticCurveTo(r * 0.9, h * 1.1, r, 0); s.quadraticCurveTo(r * 0.9, -h * 1.1, 0, -h * 0.6); s.quadraticCurveTo(r * 0.3, 0, 0, h * 0.6);
+  return s;
+}
+const WEAPON_BUILD = {
+  sword(M, g) {
+    mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.26, 8), M.wrap, g, 0, 0, 0);
+    mesh(new THREE.SphereGeometry(0.045, 10, 8), M.gem, g, 0, 0.16, 0);
+    mesh(new THREE.BoxGeometry(0.34, 0.045, 0.07), M.gold, g, 0, -0.14, 0);
+    const s = new THREE.Shape();
+    s.moveTo(-0.055, -0.16); s.lineTo(0.055, -0.16); s.lineTo(0.05, -1.0); s.lineTo(0, -1.15); s.lineTo(-0.05, -1.0); s.lineTo(-0.055, -0.16);
+    mesh(extr(s, 0.018), M.metal, g);
+    mesh(new THREE.BoxGeometry(0.014, 0.7, 0.03), M.dark, g, 0, -0.55, 0);
+    return -1.1;
+  },
+  axe(M, g) {
+    mesh(new THREE.CylinderGeometry(0.03, 0.034, 1.25, 8), M.wood, g, 0, -0.42, 0);
+    mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.2, 8), M.wrap, g, 0, 0.0, 0);
+    mesh(new THREE.BoxGeometry(0.1, 0.22, 0.09), M.dark, g, 0, -0.95, 0);
+    for (const sx of [1, -1]) { const b = mesh(extr(crescent(0.42, 0.3), 0.025), M.metal, g, sx * 0.045, -0.95, 0); b.scale.x = sx; }
+    mesh(new THREE.ConeGeometry(0.035, 0.2, 6), M.metal, g, 0, -1.15, 0).rotation.x = Math.PI;
+    mesh(new THREE.OctahedronGeometry(0.035), M.gem, g, 0, -0.95, 0.05);
+    return -1.25;
+  },
+  hammer(M, g) {
+    mesh(new THREE.CylinderGeometry(0.032, 0.036, 1.2, 8), M.wood, g, 0, -0.42, 0);
+    mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.22, 8), M.wrap, g, 0, 0.0, 0);
+    for (const y of [-0.3, -0.75]) { const t = mesh(new THREE.TorusGeometry(0.038, 0.012, 6, 12), M.metal, g, 0, y, 0); t.rotation.x = Math.PI / 2; }
+    mesh(new THREE.BoxGeometry(0.46, 0.26, 0.26), M.metal, g, 0.03, -1.05, 0);
+    mesh(new THREE.BoxGeometry(0.07, 0.32, 0.32), M.dark, g, 0.28, -1.05, 0);
+    const sp = mesh(new THREE.ConeGeometry(0.07, 0.26, 6), M.metal, g, -0.32, -1.05, 0); sp.rotation.z = Math.PI / 2;
+    mesh(new THREE.ConeGeometry(0.045, 0.2, 6), M.metal, g, 0.03, -1.28, 0).rotation.x = Math.PI;
+    mesh(new THREE.OctahedronGeometry(0.045), M.gem, g, 0.03, -1.05, 0.14);
+    return -1.2;
+  },
+  mace(M, g) {
+    mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.95, 8), M.dark, g, 0, -0.33, 0);
+    mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.24, 8), M.wrap, g, 0, 0.0, 0);
+    mesh(new THREE.SphereGeometry(0.05, 10, 8), M.gold, g, 0, 0.15, 0);
+    const head = mesh(new THREE.IcosahedronGeometry(0.16, 0), M.metal, g, 0, -0.9, 0);
+    const pos = new THREE.IcosahedronGeometry(1, 0).attributes.position, seen = new Set();
+    for (let i = 0; i < pos.count; i++) {
+      const v = V3(pos.getX(i), pos.getY(i), pos.getZ(i)).normalize(), key = v.toArray().map(n => n.toFixed(2)).join();
+      if (seen.has(key)) continue; seen.add(key);
+      const c = mesh(new THREE.ConeGeometry(0.035, 0.16, 5), M.dark, head, v.x * 0.17, v.y * 0.17, v.z * 0.17);
+      c.quaternion.setFromUnitVectors(V3(0, 1, 0), v);
+    }
+    mesh(new THREE.OctahedronGeometry(0.04), M.gem, g, 0, -0.68, 0);
+    return -1.1;
+  },
+  halberd(M, g) {
+    mesh(new THREE.CylinderGeometry(0.028, 0.032, 1.95, 8), M.wood, g, 0, -0.5, 0);
+    mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.3, 8), M.wrap, g, 0, 0.05, 0);
+    mesh(new THREE.ConeGeometry(0.04, 0.12, 6), M.metal, g, 0, 0.5, 0);
+    const b = mesh(extr(crescent(0.4, 0.32), 0.022), M.metal, g, 0.03, -1.22, 0);
+    const hk = mesh(new THREE.ConeGeometry(0.035, 0.22, 5), M.metal, g, -0.12, -1.22, 0); hk.rotation.z = -Math.PI / 2 - 0.4;
+    mesh(new THREE.ConeGeometry(0.05, 0.42, 6), M.metal, g, 0, -1.68, 0).rotation.x = Math.PI;
+    mesh(new THREE.BoxGeometry(0.07, 0.12, 0.07), M.gold, g, 0, -1.43, 0);
+    const ts = mesh(new THREE.ConeGeometry(0.05, 0.22, 6), std(0xa01a1a), g, 0, -1.35, 0.06); ts.rotation.x = 0.4;
+    mesh(new THREE.OctahedronGeometry(0.035), M.gem, g, 0.06, -1.22, 0.03);
+    return -1.85;
+  },
+  cleaver(M, g) {
+    mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.28, 8), M.wrap, g, 0, 0, 0);
+    mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), M.gold, g, 0, 0.17, 0);
+    mesh(new THREE.BoxGeometry(0.1, 0.04, 0.06), M.gold, g, 0.04, -0.15, 0);
+    const s = new THREE.Shape();
+    s.moveTo(-0.04, -0.16); s.lineTo(0.24, -0.16); s.lineTo(0.27, -0.85); s.quadraticCurveTo(0.14, -0.98, -0.04, -0.9); s.lineTo(-0.04, -0.16);
+    const hole = new THREE.Path(); hole.absarc(0.17, -0.26, 0.04, 0, TAU, true); s.holes.push(hole);
+    mesh(extr(s, 0.02), M.metal, g);
+    mesh(new THREE.BoxGeometry(0.03, 0.72, 0.03), M.dark, g, -0.035, -0.53, 0);
+    mesh(new THREE.OctahedronGeometry(0.035), M.gem, g, 0.08, -0.25, 0.02);
+    return -0.95;
+  },
+};
+function buildWeaponModel(type, tier) {
+  const g = new THREE.Group(), M = wMats(tier);
+  const tipY = WEAPON_BUILD[type](M, g);
+  const glow = new THREE.Sprite(glowMat(0xffc070)); glow.scale.setScalar(0); glow.position.y = tipY * 0.6; g.add(glow);
+  const tip = new THREE.Object3D(); tip.position.y = tipY; g.add(tip);
+  return { g, tip, glow };
+}
+
 // ============ 怒气战士 逻辑 ============
 const W = buildWarrior(); scene.add(W.root);
-const sword = buildChainBlade(); sword.ringM.visible = false; sword.g.scale.set(1.2, 1.3, 1.2); W.armR.hand.add(sword.g);
+let sword = null; // 当前武器模型（见 loot.js 的 equipWeapon）
 
 const SWING_T = 2.0, RAGE_PER_SWING = 34, GCD = 1.5, MAX_PTS = 3, REACH = 2.6, SETTLE_T = 0.3; // 停稳 0.3 秒后才能出招
 const P_OPEN = 0.30, P_FRENZY = 0.20, BUFF_DUR = 6, SHIELD_COST = 2, SHIELD_DUR = 30;
@@ -1041,7 +1182,8 @@ function updateRings(dt) {
 // ---- 目标 ----
 const alive = o => o && !o.dead && !o.gone;
 const distTo = o => Math.hypot(o.pos.x - player.pos.x, o.pos.z - player.pos.z);
-const inRange = o => alive(o) && distTo(o) < REACH + o.r;
+const reachOf = () => REACH + (player.weapon && player.weapon.type === 'halberd' ? 0.6 : 0);
+const inRange = o => alive(o) && distTo(o) < reachOf() + o.r;
 function autoTarget() {
   let best = null, bs = 1e9;
   for (const o of orcs) {
@@ -1088,7 +1230,7 @@ function gainBuff(k) {
 // ---- 伤害 ----
 function hit(o, base, opt = {}) {
   if (!alive(o)) return 0;
-  const crit = opt.crit || Math.random() < (opt.critChance ?? 0.1);
+  const crit = opt.crit || Math.random() < (opt.critChance ?? (player.weapon.type === 'axe' ? 0.2 : 0.1));
   const dmg = Math.round(base * (crit ? 1.5 : 1));
   const wasAlive = !o.dead;
   damageOrc(o, dmg, opt.knock ? V3(o.pos.x - player.pos.x, 0, o.pos.z - player.pos.z).normalize() : null, { knock: opt.knock || 0, cls: crit ? 'crit' : (opt.cls || '') });
@@ -1150,7 +1292,7 @@ function useShield() { // 护盾：2 点怒气 → 30 秒吸收盾（总量 = �
 function autoSwing() {
   const P = player; faceTarget();
   P.swingSide ^= 1;
-  startAct({ type: 'auto', side: P.swingSide, dur: 0.45, hitT: 0.17, target: P.target });
+  startAct({ type: 'auto', side: P.swingSide, dur: 0.55, hitT: 0.22, target: P.target });
   sfx('slash', 0.7);
 }
 function updateActs(dt) {
@@ -1158,15 +1300,21 @@ function updateActs(dt) {
   const prevT = a.t; a.t += dt;
   const crossed = tt => prevT < tt && a.t >= tt;
   if (a.type === 'auto' && crossed(a.hitT)) {
-    if (inRange(a.target)) { hit(a.target, rand(12, 16)); addRage(RAGE_PER_SWING); spawnArc('h', P.facing, a.side ? -0.25 : 0.25); addHitstop(0.03); }
+    if (inRange(a.target)) {
+      const w = P.weapon, st = weaponStats(w), o = a.target;
+      hit(o, rand(st.lo, st.hi), { heavy: w.swing >= 2.4 });
+      addRage(RAGE_PER_SWING * w.swing / 2 * (w.type === 'cleaver' ? 1.2 : 1)); // 怒气按攻速折算：慢武器单刀给得多
+      if (w.type === 'hammer' && alive(o) && !o.T.boss && Math.random() < 0.15) { o.stun = Math.max(o.stun, 0.6); floater(V3(o.pos.x, o.pos.y + 2.4 * o.T.scale, o.pos.z), '震晕', 'info'); }
+      if (w.type === 'mace') P.hp = Math.min(P.maxHp, P.hp + P.maxHp * 0.015); spawnArc('v', P.facing, a.side ? 0.18 : -0.1); addHitstop(0.04); addShake(0.06); }
   } else if (a.type === 'rend' && crossed(a.hitT)) {
     const o = a.target;
     if (alive(o)) {
-      const d = hit(o, 26, { heavy: true });
-      spawnArc('v', P.facing, 0, 0xffc890); addHitstop(0.06); addShake(0.15);
+      const d = hit(o, 26 * P.weapon.power, { heavy: true });
+      const pOpen = P.weapon.type === 'sword' ? 0.36 : P_OPEN;
+      spawnArc('v', P.facing, 0.6, 0xffc890, 1.1); addHitstop(0.06); addShake(0.15);
       const r = Math.random();
-      if (r < P_OPEN) { const re = gainBuff('open'); clog(`裂斩 <b>${d}</b> · 触发【<span class="o">破绽</span>】${re ? '（刷新）' : ''} → 用 <b>斩首</b> 兑现`); }
-      else if (r < P_OPEN + P_FRENZY) { const re = gainBuff('frenzy'); clog(`裂斩 <b>${d}</b> · 触发【<span class="f">狂怒</span>】${re ? '（刷新）' : ''} → 出现临时牌 <b>旋风斩</b>`); }
+      if (r < pOpen) { const re = gainBuff('open'); clog(`裂斩 <b>${d}</b> · 触发【<span class="o">破绽</span>】${re ? '（刷新）' : ''} → 用 <b>斩首</b> 兑现`); }
+      else if (r < pOpen + P_FRENZY) { const re = gainBuff('frenzy'); clog(`裂斩 <b>${d}</b> · 触发【<span class="f">狂怒</span>】${re ? '（刷新）' : ''} → 出现临时牌 <b>旋风斩</b>`); }
       else clog(`裂斩 <b>${d}</b> · <span class="g">未触发</span>`);
     }
   } else if (a.type === 'exec' && crossed(a.hitT)) {
@@ -1176,7 +1324,7 @@ function updateActs(dt) {
       const open = P.buffs.open > 0, low = o.hp / o.T.hp < 0.25;
       if (open) { mult *= 3; tags.push('<span class="o">破绽×3</span>'); P.buffs.open = 0; }
       if (low) { mult *= 2; tags.push('<span class="r">斩杀×2</span>'); }
-      const d = hit(o, 20 * mult, { crit: open, heavy: true, stun: open ? 0.6 : 0 });
+      const d = hit(o, 20 * mult * P.weapon.power, { crit: open, heavy: true, stun: open ? 0.6 : 0 });
       spawnArc('v', P.facing, 0, open ? 0xffe070 : 0xffc890, open || low ? 1.25 : 1);
       if (open || low) { addHitstop(0.12); addShake(0.4); groundRing(o.pos, 0xffd070, 2.5, 0.35); sfx('slam', 0.8); }
       else addHitstop(0.06);
@@ -1186,7 +1334,7 @@ function updateActs(dt) {
     P.facing = a.facing0 + (a.t / a.dur) * TAU * 1.1;
     if (crossed(a.hitT)) {
       let n = 0;
-      for (const o of orcs) if (alive(o) && distTo(o) < 3.4 + o.r) { hit(o, 30, { knock: 3, heavy: true }); n++; }
+      for (const o of orcs) if (alive(o) && distTo(o) < 3.4 + o.r) { hit(o, 30 * P.weapon.power, { knock: 3, heavy: true }); n++; }
       addRage(15 * n);
       spawnArc('full', 0, 0, 0xff7a4a); groundRing(P.pos, 0xff8a50, 3.6, 0.35); addHitstop(n ? 0.08 : 0); addShake(0.25);
       clog(`旋风斩 命中 <b>${n}</b> 个 · 怒气 +${15 * n}` + (n <= 1 ? ' <span class="g">（只打到一个，亏了）</span>' : ''));
@@ -1231,7 +1379,8 @@ function handleInput() {
   if (take('KeyQ') | take('Digit1')) useRend();
   if (take('KeyE') | take('Digit2')) useExec();
   if (take('KeyR') | take('Digit3')) useWhirl();
-  if (take('Space') | take('KeyF')) useShield();
+  if (take('Space')) useShield();
+  if (take('KeyF')) tryPickup();
   if (take('Tab')) cycleTarget();
   if (take('LMB')) { if (aimInfo.orc && alive(aimInfo.orc)) { player.target = aimInfo.orc; } else player.target = autoTarget(); }
 }
@@ -1266,9 +1415,9 @@ function updatePlayer(dt) {
   P.moving = m.lengthSq() > 0;
   P.standT = P.moving ? 0 : P.standT + dt;
   // 移动中普攻计时始终重置为满值：停下后要重新等满 SWING_T 秒才挥第一刀，不能靠走动“等 CD”
-  if (P.moving) P.swingT = SWING_T;
+  if (P.moving) P.swingT = P.weapon.swing;
   else P.swingT = Math.max(0, P.swingT - dt);
-  if (P.swingT <= 0 && !P.act && !P.moving && inRange(P.target)) { autoSwing(); P.swingT = SWING_T; }
+  if (P.swingT <= 0 && !P.act && !P.moving && inRange(P.target)) { autoSwing(); P.swingT = P.weapon.swing; }
   // 移动（移动时不出招）
   const sprint = (keys.ShiftLeft || keys.ShiftRight) && !alive(P.target);
   const speed = sprint ? 8 : 5.5;
@@ -1296,38 +1445,66 @@ function keyed(a, def, A, B) {
 }
 const cur = { tY: 0, tX: 0, rSX: 0, rSZ: 0, rFX: 0, lSX: 0, lSZ: 0, lFX: 0 };
 const POSES = {
-  autoA: [{ tY: -0.8, tX: 0.05, rSX: -1.45, rSZ: -0.9, rFX: -0.25, lSX: -0.3, lSZ: 0.3, lFX: -0.6 }, { tY: 0.9, tX: 0.05, rSX: -1.4, rSZ: 0.5, rFX: -0.3, lSX: -0.2, lSZ: 0.2, lFX: -0.5 }],
-  autoB: [{ tY: 0.9, tX: 0.15, rSX: -1.45, rSZ: 0.5, rFX: -0.1, lSX: 0.2, lSZ: 0.3, lFX: -0.4 }, { tY: -0.9, tX: 0.15, rSX: -1.45, rSZ: -0.9, rFX: -0.1, lSX: -0.6, lSZ: 0.3, lFX: -0.4 }],
-  rend: [{ tY: -0.15, tX: -0.3, rSX: -2.95, rSZ: -0.1, rFX: -0.35, lSX: -2.4, lSZ: -0.2, lFX: -0.6 }, { tY: 0.1, tX: 0.45, rSX: -0.65, rSZ: -0.05, rFX: -0.1, lSX: -0.7, lSZ: -0.1, lFX: -0.2 }],
-  exec: [{ tY: -0.35, tX: -0.45, rSX: -3.1, rSZ: -0.2, rFX: -0.5, lSX: -2.8, lSZ: -0.3, lFX: -0.7 }, { tY: 0.15, tX: 0.6, rSX: -0.5, rSZ: 0, rFX: -0.05, lSX: -0.6, lSZ: -0.1, lFX: -0.1 }],
+  // 普攻：双手举过头顶 → 从上往下劈（两刀左右略有偏斜，交替出）
+  autoA: [{ tY: -0.2, tX: -0.32, rSX: -3.05, rSZ: -0.15, rFX: -0.45, lSX: -2.85, lSZ: -0.55, lFX: -0.55 },
+          { tY: 0.15, tX: 0.5, rSX: -0.8, rSZ: -0.1, rFX: -0.15, lSX: -0.85, lSZ: -0.5, lFX: -0.2 }],
+  autoB: [{ tY: 0.15, tX: -0.3, rSX: -2.95, rSZ: -0.35, rFX: -0.5, lSX: -2.75, lSZ: -0.7, lFX: -0.6 },
+          { tY: -0.2, tX: 0.48, rSX: -0.85, rSZ: -0.3, rFX: -0.15, lSX: -0.9, lSZ: -0.65, lFX: -0.2 }],
+  // 裂斩：右上 → 左下的斜劈重击
+  rend: [{ tY: -0.75, tX: -0.35, rSX: -2.8, rSZ: -0.85, rFX: -0.4, lSX: -2.4, lSZ: -0.2, lFX: -0.5 },
+         { tY: 0.7, tX: 0.5, rSX: -0.85, rSZ: 0.45, rFX: -0.1, lSX: -0.8, lSZ: -0.6, lFX: -0.2 }],
+  // 斩首：跃起高举 → 全力下劈
+  exec: [{ tY: -0.3, tX: -0.5, rSX: -3.15, rSZ: -0.2, rFX: -0.5, lSX: -2.95, lSZ: -0.5, lFX: -0.6 },
+         { tY: 0.12, tX: 0.65, rSX: -0.55, rSZ: -0.05, rFX: -0.05, lSX: -0.6, lSZ: -0.45, lFX: -0.1 }],
 };
+let stanceAmt = 0, stanceT = 0;
 function animateWarrior(dt) {
   const P = player, M = W, a = P.act;
   M.root.position.set(P.pos.x, P.pos.y, P.pos.z); M.root.rotation.y = P.facing;
-  if (P.dead) { const k = Math.min(1, P.deadT / 0.6); M.body.rotation.x = -k * k * Math.PI / 2 * 0.95; return; }
+  if (P.dead) { const k = Math.min(1, P.deadT / 0.6); M.body.rotation.set(-k * k * Math.PI / 2 * 0.95, 0, 0); return; }
   const sp = Math.hypot(P.vel.x, P.vel.z), amt = clamp(sp / 5.5, 0, 1.5), am = Math.min(amt, 1.2);
   P.walkPhase += dt * sp * 1.7;
   const s = Math.sin(P.walkPhase);
-  let legL = s * 0.7 * am, legR = -s * 0.7 * am;
   const combat = alive(P.target) && distTo(P.target) < 7;
-  const def = combat
-    ? { tY: -0.2, tX: 0.12, rSX: -0.9, rSZ: -0.3, rFX: -0.9, lSX: -0.7 - s * 0.1 * am, lSZ: 0.25, lFX: -1.0 }
-    : { tY: 0, tX: 0.1 * amt, rSX: -0.2 + s * 0.35 * am, rSZ: -0.18, rFX: -0.35, lSX: -s * 0.45 * am, lSZ: 0.12, lFX: -0.3 };
+  // 战斗站姿：站定且有目标时淡入；移动时淡出成跑步
+  stanceAmt = damp(stanceAmt, combat && !P.moving ? 1 : 0, 7, dt);
+  stanceT += dt;
+  const br = Math.sin(stanceT * 5.6);          // 呼吸起伏（约 1.1 秒一次）
+  const sw = Math.sin(stanceT * 2.8);          // 左右大幅摇晃（约 2.2 秒一个来回）
+  const cs = stanceAmt;
+  const run = { tY: 0, tX: 0.1 * amt, rSX: -0.2 + s * 0.35 * am, rSZ: -0.18, rFX: -0.65, lSX: -s * 0.45 * am, lSZ: 0.12, lFX: -0.3 };
+  const guard = { // 双手竖握重剑，剑尖斜指前上方（约 45°），随呼吸和摇晃大幅起伏
+    tY: -0.3 + sw * 0.32, tX: 0.28 + br * 0.13,
+    rSX: -0.95 + br * 0.2, rSZ: -0.12 + sw * 0.1, rFX: -1.75 - br * 0.12,
+    lSX: -0.85 + br * 0.2, lSZ: -0.62 + sw * 0.08, lFX: -1.7 - br * 0.12,
+  };
+  const def = combat ? mixPose(run, guard, cs) : run;
   let pose = def, k = 18;
+  // 腿：跑步摆腿 ↔ 战斗弓步（前后分开 + 向外张开）
+  let legLX = lerp(s * 0.7 * am, -0.42 + sw * 0.1, cs), legRX = lerp(-s * 0.7 * am, 0.36 - sw * 0.1, cs); // 重心前后挪动
+  const legZ = 0.17 * cs;
   if (a) {
     if (a.type === 'auto') { const [A, B] = a.side ? POSES.autoB : POSES.autoA; pose = keyed(a, def, A, B); k = 50; }
-    else if (a.type === 'rend' || a.type === 'exec') { const [A, B] = POSES[a.type]; pose = keyed(a, def, A, B); k = 55; legL = 0.5; legR = -0.35; }
-    else if (a.type === 'whirl') { pose = { tY: 0, tX: 0.1, rSX: -1.5, rSZ: -1.3, rFX: -0.05, lSX: -0.5, lSZ: 0.9, lFX: -0.4 }; k = 40; legL = 0.3; legR = -0.3; }
+    else if (a.type === 'rend' || a.type === 'exec') { const [A, B] = POSES[a.type]; pose = keyed(a, def, A, B); k = 55; legLX = -0.55; legRX = 0.45; }
+    else if (a.type === 'whirl') { pose = { tY: 0, tX: 0.1, rSX: -1.5, rSZ: -1.3, rFX: -0.05, lSX: -0.5, lSZ: 0.9, lFX: -0.4 }; k = 40; legLX = 0.3; legRX = -0.3; }
   }
   for (const key of POSE_KEYS) cur[key] = damp(cur[key], pose[key], k, dt);
   M.torso.rotation.set(cur.tX, cur.tY, 0);
   M.armR.sh.rotation.set(cur.rSX, 0, cur.rSZ); M.armR.fore.rotation.x = cur.rFX;
   M.armL.sh.rotation.set(cur.lSX, 0, cur.lSZ); M.armL.fore.rotation.x = cur.lFX;
-  M.head.rotation.y = -cur.tY * 0.6;
-  M.legL.rotation.x = damp(M.legL.rotation.x, legL, 25, dt); M.legR.rotation.x = damp(M.legR.rotation.x, legR, 25, dt);
-  M.body.position.y = Math.abs(Math.cos(P.walkPhase)) * 0.05 * Math.min(amt, 1);
-  M.body.rotation.x = 0;
-  M.cape.rotation.x = 0.12 + Math.min(amt, 1.5) * 0.5 + Math.sin(P.walkPhase * 2) * 0.05 * amt;
+  M.head.rotation.set(-cur.tX * 0.5, -cur.tY * 0.7, 0); // 头始终盯住前方
+  M.legL.rotation.x = damp(M.legL.rotation.x, legLX, 25, dt); M.legR.rotation.x = damp(M.legR.rotation.x, legRX, 25, dt);
+  M.legL.rotation.z = damp(M.legL.rotation.z, legZ, 12, dt); M.legR.rotation.z = damp(M.legR.rotation.z, -legZ, 12, dt);
+  // 身体：跑步颠簸 ↔ 站姿下沉 + 呼吸起伏 + 左右摇摆
+  let bodyY = lerp(Math.abs(Math.cos(P.walkPhase)) * 0.05 * Math.min(amt, 1), -0.1 + (0.5 + 0.5 * br) * 0.09, cs);
+  if (a && (a.type === 'auto' || a.type === 'rend' || a.type === 'exec')) {
+    const hk = clamp(a.t / Math.max(0.01, a.hitT), 0, 1);
+    if (a.type === 'exec') bodyY += Math.sin(hk * Math.PI) * 0.35 * (a.t < a.hitT + 0.05 ? 1 : 0); // 跃起
+    if (a.t > a.hitT && a.t < a.hitT + 0.12) bodyY -= 0.06 * (1 - (a.t - a.hitT) / 0.12);           // 劈下时沉身
+  }
+  M.body.position.y = damp(M.body.position.y, bodyY, 30, dt);
+  M.body.rotation.set(0, sw * 0.08 * cs * (a ? 0.3 : 1), sw * 0.12 * cs * (a ? 0.3 : 1));
+  M.cape.rotation.x = 0.12 + Math.min(amt, 1.5) * 0.5 + Math.sin(P.walkPhase * 2) * 0.05 * amt + sw * 0.05 * cs;
   // 剑身发光：破绽 金色 / 狂怒 红色
   const gl = P.buffs.open > 0 ? 1.6 : P.buffs.frenzy > 0 ? 1.3 : 0;
   sword.glow.material.color.setHex(P.buffs.open > 0 ? 0xffd060 : 0xff4a2a);
@@ -1380,6 +1557,127 @@ function updateSelRing() {
   selRing.scale.setScalar(t.T.scale * (1 + Math.sin(time * 4) * 0.04));
   selRing.material.color.setHex(inRange(t) ? 0xff5040 : 0x8a8a8a);
 }
+
+// ============ 掉落 / 拾取 / 换装 ============
+const loots = [];
+const lootLayer = $('bars');
+let dropsGiven = 0;
+function equipWeapon(w, silent) {
+  const P = player;
+  if (sword) W.armR.hand.remove(sword.g);
+  sword = buildWeaponModel(w.type, w.tier);
+  W.armR.hand.add(sword.g);
+  P.weapon = w;
+  P.swingT = Math.max(P.swingT, Math.min(P.swingT, w.swing));
+  refreshWeaponPanel();
+  if (!silent) {
+    const st = weaponStats(w);
+    floater(V3(P.pos.x, P.pos.y + 2.6, P.pos.z), '装备 ' + w.name, 'heal');
+    clog(`装备 <span style="color:${RARITY[w.tier].css}">[${RARITY[w.tier].name}] ${w.name}</span> · 每击 ${st.lo}~${st.hi} · 秒伤 ${st.dps.toFixed(1)}`);
+    sfx('clang', 0.8);
+    for (let i = 0; i < 24; i++) { const r = rdir(); fx.emit(P.pos.x, P.pos.y + 1.2, P.pos.z, r[0] * 3, Math.abs(r[1]) * 3, r[2] * 3, 0.6, 0.25, 0.04, [1, 1, 0.9], [1, 0.8, 0.4], 0, 2); }
+  }
+}
+function dropWeapon(w, x, z) {
+  const m = buildWeaponModel(w.type, w.tier);
+  const grp = new THREE.Group(); grp.add(m.g);
+  m.g.rotation.z = Math.PI / 2; m.g.position.x = -0.5; // 横躺着展示
+  const col = RARITY[w.tier].hex;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 5, 14, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 32), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2;
+  const y = H(x, z);
+  grp.position.set(x, y + 0.7, z); beam.position.set(x, y + 2.5, z); ring.position.set(x, y + 0.05, z);
+  scene.add(grp, beam, ring);
+  const el = document.createElement('div'); el.className = 'lootLabel'; el.style.color = RARITY[w.tier].css;
+  el.textContent = `[${RARITY[w.tier].name}] ${w.name}`; lootLayer.appendChild(el);
+  const L = { w, grp, beam, ring, el, x, z, t: 0 };
+  loots.push(L);
+  // 落地特效
+  for (let i = 0; i < 20; i++) { const r = rdir(); fx.emit(x, y + 0.8, z, r[0] * 2, Math.abs(r[1]) * 4, r[2] * 2, 0.8, 0.2, 0.04, [1, 1, 1], [(col >> 16 & 255) / 255, (col >> 8 & 255) / 255, (col & 255) / 255], 4, 1); }
+  return L;
+}
+function removeLoot(L) {
+  scene.remove(L.grp, L.beam, L.ring); L.el.remove();
+  L.beam.material.dispose(); L.ring.material.dispose();
+  loots.splice(loots.indexOf(L), 1);
+}
+function rollDropTier(boss) {
+  const base = player.weapon.tier;
+  if (boss) return Math.min(4, base + 1);
+  if (dropsGiven === 0) return 1;
+  const r = Math.random();
+  if (r < 0.5) return Math.min(4, base + 1);     // 升一档：明显提升
+  if (r < 0.85) return Math.max(1, base);         // 同档：换类型（换特性）
+  return Math.max(1, base - 1);                   // 低一档
+}
+function onOrcKilled(o) {
+  const boss = !!o.T.boss;
+  const chance = boss || dropsGiven === 0 ? 1 : 0.45;
+  if (!boss && loots.length >= 5) return;
+  if (Math.random() > chance) return;
+  const others = WTYPE_KEYS.filter(k => k !== player.weapon.type);
+  const type = Math.random() < 0.8 ? others[Math.floor(Math.random() * others.length)] : player.weapon.type;
+  const w = makeWeapon(type, rollDropTier(boss));
+  dropsGiven++;
+  dropWeapon(w, o.pos.x, o.pos.z);
+  floater(V3(o.pos.x, o.pos.y + 2.2, o.pos.z), '掉落 ' + w.name, 'loot');
+  clog(`掉落 <span style="color:${RARITY[w.tier].css}">[${RARITY[w.tier].name}] ${w.name}</span> · 走过去按 <b>F</b> 换上`);
+}
+let nearLoot = null;
+const lootCard = $('lootCard');
+function updateLoot(dt) {
+  const P = player;
+  nearLoot = null; let nd = 1.9;
+  for (const L of [...loots]) {
+    L.t += dt;
+    L.grp.rotation.y += dt * 1.3;
+    L.grp.position.y = H(L.x, L.z) + 0.7 + Math.sin(L.t * 2.5) * 0.08;
+    L.beam.material.opacity = 0.16 + Math.sin(L.t * 3) * 0.06;
+    const d = Math.hypot(L.x - P.pos.x, L.z - P.pos.z);
+    if (d < nd) { nd = d; nearLoot = L; }
+    if (L.t > 120 && d > 6) { removeLoot(L); continue; }
+    _bp.set(L.x, H(L.x, L.z) + 1.5, L.z);
+    if (_bp.distanceTo(camera.position) < 40 && toScreen(_bp, _sp)) {
+      L.el.style.display = 'block'; L.el.style.transform = `translate(${_sp.x}px,${_sp.y}px) translate(-50%,-100%)`;
+    } else L.el.style.display = 'none';
+  }
+  if (nearLoot) {
+    const w = nearLoot.w, cw = P.weapon, a = weaponStats(w), b = weaponStats(cw);
+    const pct = Math.round((a.dps / b.dps - 1) * 100);
+    const delta = pct > 0 ? `<span class="up">秒伤 +${pct}%</span>` : pct < 0 ? `<span class="dn">秒伤 ${pct}%</span>` : '<span class="eq">秒伤持平</span>';
+    const key = w.name + w.power;
+    if (lootCard.dataset.key !== key) {
+      lootCard.dataset.key = key;
+      lootCard.innerHTML = `<div class="nm" style="color:${RARITY[w.tier].css}">[${RARITY[w.tier].name}] ${w.name}</div>
+        <div>每击 <b>${a.lo}~${a.hi}</b> · ${w.swing.toFixed(1)} 秒/击 · ${delta}</div>
+        <div class="tr">特性：${WTYPES[w.type].trait}</div>
+        <div class="cur">当前：<span style="color:${RARITY[cw.tier].css}">${cw.name}</span>（每击 ${b.lo}~${b.hi} · ${cw.swing.toFixed(1)} 秒/击）</div>
+        <div class="k"><b>F</b> 换上（当前武器会留在地上）</div>`;
+    }
+    lootCard.style.display = 'block';
+  } else { lootCard.style.display = 'none'; lootCard.dataset.key = ''; }
+}
+function tryPickup() {
+  const P = player;
+  if (!nearLoot || P.dead) return;
+  if (P.act) { err('出招中不能换武器'); return; }
+  const L = nearLoot, old = P.weapon;
+  removeLoot(L);
+  equipWeapon(L.w);
+  dropWeapon(old, L.x, L.z); // 换下来的放回原地，可以随时换回去
+}
+const wpEl = $('weapon');
+function refreshWeaponPanel() {
+  const w = player.weapon; if (!w || !wpEl) return;
+  const st = weaponStats(w);
+  wpEl.innerHTML = `<div class="nm" style="color:${RARITY[w.tier].css}">${w.name}</div>
+    <div>${RARITY[w.tier].name} · ${WTYPES[w.type].name} · 伤害 ×${w.power.toFixed(2)}</div>
+    <div>每击 <b>${st.lo}~${st.hi}</b> · ${w.swing.toFixed(1)} 秒/击 · 秒伤 ${st.dps.toFixed(1)}</div>
+    <div class="tr">${WTYPES[w.type].trait}</div>`;
+}
+
+equipWeapon(makeWeapon('sword', 0), true);
 // ============ 半兽人 AI ============
 const orcs = [];
 let kills = 0, bossAlive = false, nextBossAt = 8, spawnT = 0;
@@ -1527,7 +1825,7 @@ function damageOrc(o, amount, dir, opt = {}) {
 }
 function killOrc(o) {
   o.hp = 0; o.dead = true; o.deadT = 0; o.state = 'dead'; if (o.bar.parentNode) o.bar.remove();
-  kills++; $('kills').querySelector('b').textContent = kills;
+  kills++; $('kills').querySelector('b').textContent = kills; onOrcKilled(o);
   sfx('die', distVol(o.pos));
   o.center(_c);
   for (let i = 0; i < 30; i++) { const r = rdir(); fx.emit(_c.x, _c.y, _c.z, r[0] * 3, Math.abs(r[1]) * 4, r[2] * 3, rand(0.5, 1), 0.3, 0.05, EMB0, EMB1, 3, 1); }
@@ -1615,7 +1913,7 @@ function updateHUD(dt) {
   } else shTag.style.display = 'none';
   pips.forEach((p, i) => { p.classList.toggle('on', i < P.pts); p.classList.toggle('full', P.pts >= MAX_PTS); });
   rageFill.style.width = P.rage + '%'; rageTxt.textContent = P.pts >= MAX_PTS && P.rage >= 100 ? '怒气已满（溢出浪费）' : `怒气 ${Math.floor(P.rage)}/100`;
-  swingFill.style.width = ((1 - P.swingT / SWING_T) * 100) + '%';
+  swingFill.style.width = ((1 - P.swingT / P.weapon.swing) * 100) + '%';
   const standing = !P.moving && P.standT >= SETTLE_T;
   swingWrap.classList.toggle('paused', !standing);
   stanceEl.textContent = standing ? (inRange(T) ? '站桩 · 自动攻击中' : (alive(T) ? '站桩 · 目标太远' : '站桩')) : '移动中 · 不出招';
@@ -1671,18 +1969,18 @@ function updateBars() {
 // ============ 主循环 ============
 let time = 0;
 const clock = new THREE.Clock();
-let frameErr = '';
+let frameErr = '', testFreeze = false;
 function frame() {
   requestAnimationFrame(frame);
   let real = Math.min(clock.getDelta(), 0.05);
-  if (paused) real = 0;
+  if (paused || testFreeze) real = 0;
   let dt = real;
   if (hitstop > 0) { hitstop -= real; dt = real * 0.05; }
   time += dt;
   try {
     computeAim();
     if (real > 0) {
-      updatePlayer(dt);
+      updatePlayer(dt); updateLoot(dt);
       for (const o of orcs) o.update(dt);
       for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
       spawner(dt);
@@ -1705,12 +2003,12 @@ frame();
 const btn = $('startBtn'); btn.disabled = false; btn.textContent = '进入沃玛森林';
 function simStep(dt) { // 测试用：不渲染，只推进逻辑
   time += dt; if (hitstop > 0) hitstop -= dt;
-  computeAim(); updatePlayer(dt);
+  computeAim(); updatePlayer(dt); updateLoot(dt);
   for (const o of orcs) o.update(dt);
   for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
   spawner(dt); updateRings(dt); updateArcs(dt); fx.update(dt); dust.update(dt); animateWarrior(dt); updateSelRing(); updateShieldFx(dt); updateHUD(dt);
 }
-window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, setKey(k, v) { keys[k] = v; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
+window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, loots, dropWeapon, makeWeapon, equipWeapon, get weapon() { return player.weapon; }, setKey(k, v) { keys[k] = v; }, freeze(v) { testFreeze = v; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
   start() { started = true; freeMouse = true; setPaused(false); } };
 </script>
 </body>
