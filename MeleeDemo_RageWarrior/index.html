@@ -123,6 +123,9 @@
   .bar div{height:100%;width:0}
   #rageBar div{background:linear-gradient(#ff6a3a,#a8200a);box-shadow:0 0 8px #ff4a1a}
   #swingBar{height:5px}#swingBar div{background:#d8c8a0}
+  #swingBar.paused div{background:#5a5448}
+  #stance{font-size:11px;text-align:center;color:#9a917e;height:13px;line-height:13px}
+  #stance.on{color:#ffcf6a}#stance.mv{color:#8ab8ff}
   .bar span{position:absolute;inset:0;font-size:10px;line-height:12px;text-align:center;color:#fff;text-shadow:0 0 2px #000}
   #pips{display:flex;gap:8px;justify-content:center}
   .pip{width:30px;height:30px;transform:rotate(45deg);border:2px solid #8a5a2a;background:#1a0d06;transition:all .15s}
@@ -162,7 +165,7 @@
 <div id="target"><div class="tn"></div><div class="tb"><div class="tf"></div></div><div class="th"></div><div class="tags"></div></div>
 <div id="kills">击杀<b>0</b></div>
 <div id="help"><b>WASD</b> 移动　<b>鼠标</b> 转镜头　<b>左键</b> 选中准星下的敌人　<b>Tab</b> 切换目标<br>
-靠近目标会<b>自动攻击</b>（站桩对打，积攒怒气）<br>
+<b>站定</b>在目标身边会自动攻击（移动时不出招）<br>
 <b>Q</b> 裂斩　<b>E</b> 斩首　<b>R</b> 旋风斩（狂怒时）　<b>空格</b> 护盾（2 点）　<b>Esc</b> 暂停</div>
 <div id="mouseWarn">鼠标未能锁定：点击画面重试；光标靠近屏幕边缘会自动转向</div>
 <div id="banner"></div>
@@ -177,6 +180,7 @@
       <div id="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
       <div class="bar" id="rageBar"><div></div><span>怒气 0/100</span></div>
       <div class="bar" id="swingBar"><div></div></div>
+      <div id="stance">站桩</div>
     </div>
     <div class="slot" id="sQ"><div class="nm">裂斩</div><div class="ico">裂</div><div class="cd"></div><div class="cost">1点</div><div class="key">Q</div></div>
     <div class="slot" id="sE"><div class="nm">斩首</div><div class="ico">斩</div><div class="cd"></div><div class="cost">1点</div><div class="key">E</div></div>
@@ -188,7 +192,7 @@
 <div id="overlay"><div class="panel">
   <h1>怒气战士</h1>
   <h2>沃玛森林 · 读牌出牌的近战</h2>
-  <p><b>节奏：</b>靠近敌人自动普攻（2 秒一刀）→ 怒气条满 100 变成 <b>1 个怒气点</b>（最多存 3 个，满了再攒就浪费）。</p>
+  <p><b>站桩：</b>只有<b>站定不动</b>才会普攻和出招，出招动作期间也不能走——专心看牌，不用边跑边打。<br><b>节奏：</b>站在敌人身边自动普攻（2 秒一刀）→ 怒气条满 100 变成 <b>1 个怒气点</b>（最多存 3 个，满了再攒就浪费）。</p>
   <table>
     <tr><th>牌</th><th>花费</th><th>效果</th></tr>
     <tr><td><b>Q 裂斩</b>（摸牌）</td><td>1 点</td><td>伤害 26，有 <b>50%</b> 触发：30%【破绽】/ 20%【狂怒】/ 50% 什么都没有</td></tr>
@@ -432,7 +436,7 @@ const dummy = new THREE.Object3D();
     trunks.setMatrixAt(i, dummy.matrix);
     const hue = rand(0.25, 0.4), l = rand(0.13, 0.22);
     cans.forEach((m, k) => { m.setMatrixAt(i, dummy.matrix); col.setHSL(hue + k * 0.01, rand(0.35, 0.55), l + k * 0.025); m.setColorAt(i, col); });
-    if (t.coll) addCollider(t.x, t.z, 0.45 * t.s, 4.0 * t.s);
+    if (t.coll) { addCollider(t.x, t.z, 0.45 * t.s, 4.0 * t.s); colliders[colliders.length - 1].canopy = 2.4 * t.s; }
   });
 }
 
@@ -734,9 +738,9 @@ function buildChainBlade() {
 }
 // ============ 半兽人 ============
 const ORC_TYPES = {
-  grunt:   { name: '半兽人',   hp: 200, scale: 1.0,  skin: 0x8a6a3e, armor: 0x5a3a22, speed: 3.4, dmg: 9,  reach: 1.7, wind: 0.5 },
-  warrior: { name: '半兽战士', hp: 330, scale: 1.15, skin: 0x63733a, armor: 0x4c4c56, speed: 3.9, dmg: 13, reach: 1.95, wind: 0.48, helm: true },
-  hero:    { name: '半兽勇士', hp: 1400, scale: 1.7, skin: 0x4c5c2a, armor: 0x9a7428, speed: 3.1, dmg: 26, reach: 2.8, wind: 0.75, helm: true, boss: true },
+  grunt:   { name: '半兽人',   hp: 200, scale: 1.0,  skin: 0x8a6a3e, armor: 0x5a3a22, speed: 3.4, dmg: 9,  reach: 2.3, wind: 0.5 },
+  warrior: { name: '半兽战士', hp: 330, scale: 1.15, skin: 0x63733a, armor: 0x4c4c56, speed: 3.9, dmg: 13, reach: 2.5, wind: 0.48, helm: true },
+  hero:    { name: '半兽勇士', hp: 1400, scale: 1.7, skin: 0x4c5c2a, armor: 0x9a7428, speed: 3.1, dmg: 26, reach: 3.3, wind: 0.75, helm: true, boss: true },
 };
 function buildOrc(T) {
   const root = new THREE.Group(), body = new THREE.Group(); body.scale.setScalar(T.scale); root.add(body);
@@ -908,6 +912,18 @@ function updateCamera(dt) {
     const r = c.r + 0.25, b = ox * dx + oz * dz, cc = ox * ox + oz * oz - r * r, disc = b * b - a * cc;
     if (disc > 0) { const t = (-b - Math.sqrt(disc)) / a; if (t > 0 && t < dist) dist = Math.max(0.6, t - 0.1); }
   }
+  // 树冠遮挡：镜头和角色之间隔着树冠时把镜头拉近
+  for (const c of colliders) {
+    if (!c.canopy) continue;
+    const ox = px - c.x, oz = pz - c.z; if (ox * ox + oz * oz > 144) continue;
+    const s = c.h / 4, y0 = c.base + 2.7 * s, y1 = c.base + 8.6 * s;
+    for (let i = 1; i <= 12; i++) {
+      const t = dist * i / 12, x = px - camFwd.x * t, y = py - camFwd.y * t, z = pz - camFwd.z * t;
+      if (y < y0 || y > y1) continue;
+      const R = c.canopy * (1 - (y - y0) / (y1 - y0)) + 0.3;
+      if (Math.hypot(x - c.x, z - c.z) < R) { dist = Math.max(0.9, t - dist / 12); break; }
+    }
+  }
   let cx = px - camFwd.x * dist, cy = py - camFwd.y * dist, cz = pz - camFwd.z * dist;
   cy = Math.max(cy, H(cx, cz) + 0.35);
   if (cam.shake > 0) {
@@ -951,7 +967,7 @@ function computeAim() {
 const W = buildWarrior(); scene.add(W.root);
 const sword = buildChainBlade(); sword.ringM.visible = false; sword.g.scale.set(1.2, 1.3, 1.2); W.armR.hand.add(sword.g);
 
-const SWING_T = 2.0, RAGE_PER_SWING = 34, GCD = 1.5, MAX_PTS = 3, REACH = 2.6;
+const SWING_T = 2.0, RAGE_PER_SWING = 34, GCD = 1.5, MAX_PTS = 3, REACH = 2.6, SETTLE_T = 0.3; // 停稳 0.3 秒后才能出招
 const P_OPEN = 0.30, P_FRENZY = 0.20, BUFF_DUR = 6, SHIELD_COST = 2, SHIELD_DUR = 30;
 const BUFF_NAME = { open: '破绽', frenzy: '狂怒' };
 
@@ -959,7 +975,7 @@ const player = {
   pos: V3(START.x, H(START.x, START.z), START.z), vel: V3(), facing: START_YAW, yOff: 0,
   hp: 520, maxHp: 520, dead: false, deadT: 0, lastHurt: -99, lastCombat: -99,
   rage: 0, pts: 0, swingT: 0.4, swingSide: 0, gcd: 0, buffs: { open: 0, frenzy: 0 },
-  shield: 0, shieldMax: 0, shieldT: 0, act: null, walkPhase: 0, target: null, capWarnT: 0,
+  shield: 0, shieldMax: 0, shieldT: 0, standT: 1, moving: false, act: null, walkPhase: 0, target: null, capWarnT: 0,
 };
 
 // ---- 战斗记录 / 报错 ----
@@ -1090,6 +1106,7 @@ function faceTarget() { const t = player.target; if (alive(t)) player.facing = M
 function canCast(needPts = true) {
   const P = player;
   if (P.dead) return false;
+  if (P.moving || P.standT < SETTLE_T) { err('移动中无法出招 —— 站定再打'); return false; }
   if (P.gcd > 0) { err('技能还没准备好（公共冷却）'); return false; }
   if (!alive(P.target)) { P.target = autoTarget(); if (!alive(P.target)) { err('没有目标'); return false; } }
   if (!inRange(P.target)) { err('距离太远'); return false; }
@@ -1243,13 +1260,18 @@ function updatePlayer(dt) {
   if (!alive(P.target) || distTo(P.target) > 25) P.target = autoTarget();
   handleInput();
   updateActs(dt);
-  // 自动攻击：站桩对打
-  P.swingT = Math.max(0, P.swingT - dt);
-  if (P.swingT <= 0 && !P.act && inRange(P.target)) { autoSwing(); P.swingT = SWING_T; }
-  // 移动（可以边走边打）
-  const m = moveInput();
+  // 自动攻击：只有站定时才挥刀（移动时不挥，避免“边跑边打”的收益）
+  let m = moveInput();
+  if (P.act) m = V3(); // 出招动作期间原地不动（打完才能走）
+  P.moving = m.lengthSq() > 0;
+  P.standT = P.moving ? 0 : P.standT + dt;
+  // 移动中普攻计时始终重置为满值：停下后要重新等满 SWING_T 秒才挥第一刀，不能靠走动“等 CD”
+  if (P.moving) P.swingT = SWING_T;
+  else P.swingT = Math.max(0, P.swingT - dt);
+  if (P.swingT <= 0 && !P.act && !P.moving && inRange(P.target)) { autoSwing(); P.swingT = SWING_T; }
+  // 移动（移动时不出招）
   const sprint = (keys.ShiftLeft || keys.ShiftRight) && !alive(P.target);
-  const speed = (P.act && P.act.type !== 'auto' ? 2.5 : (sprint ? 8 : 5.5));
+  const speed = sprint ? 8 : 5.5;
   P.vel.x = damp(P.vel.x, m.x * speed, 12, dt); P.vel.z = damp(P.vel.z, m.z * speed, 12, dt);
   P.pos.x += P.vel.x * dt; P.pos.z += P.vel.z * dt;
   collidePos(P.pos, 0.4);
@@ -1401,8 +1423,8 @@ class Orc {
         if (!player.dead && (d < 20 || this.aggro)) { this.state = 'chase'; if (!this.aggro) { this.aggro = true; sfx('roar', distVol(this.pos) * 0.7); } }
         break;
       case 'chase':
-        this.facing = dampAngle(this.facing, toAng, 8, dt); want = d > T.reach * 0.8 ? T.speed : 0;
-        if (d < T.reach && this.atkCd <= 0) {
+        this.facing = dampAngle(this.facing, toAng, 8, dt); want = d > T.reach - 0.15 ? T.speed : 0;
+        if (d < T.reach + 0.1 && this.atkCd <= 0) {
           this.atkN = (this.atkN || 0) + 1; this.heavy = this.atkN % (T.boss ? 2 : 3) === 0;
           this.state = 'windup'; this.st = this.heavy ? 1.2 : T.wind;
           if (this.heavy) { floater(V3(this.pos.x, this.pos.y + 2.7 * T.scale, this.pos.z), '重击！', 'warn'); sfx('roar', distVol(this.pos) * 0.6); }
@@ -1414,7 +1436,7 @@ class Orc {
         if (this.st <= 0) { this.state = 'strike'; this.st = 0.16; this.didHit = false; sfx('swing', distVol(this.pos)); }
         break;
       case 'strike':
-        this.st -= dt; want = T.boss ? 2 : 3.5;
+        this.st -= dt; want = 0;
         if (!this.didHit && this.st < 0.08) {
           this.didHit = true;
           if (d < T.reach + 0.6 && Math.abs(wrapAngle(toAng - this.facing)) < 1.1) hurtPlayer(Math.round(T.dmg * (this.heavy ? 2.5 : 1) * rand(0.9, 1.1)), this.pos, { heavy: this.heavy, orc: this });
@@ -1440,8 +1462,8 @@ class Orc {
       if (d2 < rr * rr && d2 > 1e-6) { const dd = Math.sqrt(d2), k = (rr - dd) / dd * 0.5; this.pos.x += ex * k; this.pos.z += ez * k; }
     }
     if (!player.dead) {
-      const rr = this.r + 0.4;
-      if (d < rr && d > 1e-4) { const k = (rr - d) / d; this.pos.x -= dx * k * 0.5; this.pos.z -= dz * k * 0.5; player.pos.x += dx * k * 0.5; player.pos.z += dz * k * 0.5; }
+      const rr = Math.max(this.r + 0.4, T.reach - 0.5); // 保持站桩间距：只把怪推开，不推玩家
+      if (d < rr && d > 1e-4) { const k = (rr - d) / d; this.pos.x -= dx * k; this.pos.z -= dz * k; }
     }
     collidePos(this.pos, this.r);
     this.pos.y = H(this.pos.x, this.pos.z);
@@ -1574,6 +1596,7 @@ const ch = $('crosshair'), tgt = $('target'), tgtN = tgt.querySelector('.tn'), t
 const hurtEl = $('hurt'), buffsEl = $('buffs'), shFill = document.querySelector('.orb .sh'), shTag = $('shTag');
 shTag.insertAdjacentHTML('beforeend', '<div class="b"><div></div></div>'); const shTagBar = shTag.querySelector('.b div');
 const pips = [...document.querySelectorAll('.pip')];
+const swingWrap = $('swingBar'), stanceEl = $('stance');
 const rageFill = document.querySelector('#rageBar div'), rageTxt = document.querySelector('#rageBar span'), swingFill = document.querySelector('#swingBar div');
 const slot = id => { const e = $(id); return { e, cd: e.querySelector('.cd') }; };
 const S = { q: slot('sQ'), e: slot('sE'), r: slot('sR'), b: slot('sB') };
@@ -1593,12 +1616,17 @@ function updateHUD(dt) {
   pips.forEach((p, i) => { p.classList.toggle('on', i < P.pts); p.classList.toggle('full', P.pts >= MAX_PTS); });
   rageFill.style.width = P.rage + '%'; rageTxt.textContent = P.pts >= MAX_PTS && P.rage >= 100 ? '怒气已满（溢出浪费）' : `怒气 ${Math.floor(P.rage)}/100`;
   swingFill.style.width = ((1 - P.swingT / SWING_T) * 100) + '%';
+  const standing = !P.moving && P.standT >= SETTLE_T;
+  swingWrap.classList.toggle('paused', !standing);
+  stanceEl.textContent = standing ? (inRange(T) ? '站桩 · 自动攻击中' : (alive(T) ? '站桩 · 目标太远' : '站桩')) : '移动中 · 不出招';
+  stanceEl.className = standing ? (inRange(T) ? 'on' : '') : 'mv';
   const tr = inRange(T), gcdF = Math.max(0, P.gcd) / GCD;
   const low = alive(T) && T.hp / T.T.hp < 0.25;
   const heavyIncoming = orcs.some(o => alive(o) && o.state === 'windup' && o.heavy && distTo(o) < o.T.reach + 1.5);
   // 技能可用 / 推荐出牌高亮
-  S.q.e.classList.toggle('off', P.pts < 1 || !tr); S.q.cd.style.height = gcdF * 100 + '%';
-  S.e.e.classList.toggle('off', P.pts < 1 || !tr); S.e.cd.style.height = gcdF * 100 + '%';
+  const mv = P.moving || P.standT < SETTLE_T;
+  S.q.e.classList.toggle('off', P.pts < 1 || !tr || mv); S.q.cd.style.height = gcdF * 100 + '%';
+  S.e.e.classList.toggle('off', P.pts < 1 || !tr || mv); S.e.cd.style.height = gcdF * 100 + '%';
   S.r.e.classList.toggle('off', P.buffs.frenzy <= 0); S.r.cd.style.height = '0%';
   S.b.e.classList.toggle('off', P.pts < SHIELD_COST); S.b.cd.style.height = (P.shieldT > 0 ? P.shieldT / SHIELD_DUR * 100 : 0) + '%';
   S.e.e.classList.toggle('glow', (P.buffs.open > 0 || low) && P.pts > 0 && tr);
@@ -1682,7 +1710,7 @@ function simStep(dt) { // 测试用：不渲染，只推进逻辑
   for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
   spawner(dt); updateRings(dt); updateArcs(dt); fx.update(dt); dust.update(dt); animateWarrior(dt); updateSelRing(); updateShieldFx(dt); updateHUD(dt);
 }
-window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
+window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, setKey(k, v) { keys[k] = v; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
   start() { started = true; freeMouse = true; setPaused(false); } };
 </script>
 </body>
