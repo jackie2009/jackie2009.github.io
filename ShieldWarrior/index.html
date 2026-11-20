@@ -109,7 +109,7 @@
 
   #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:radial-gradient(ellipse at center,rgba(10,20,12,.55),rgba(0,0,0,.88))}
-  .panel{width:780px;padding:30px 40px;text-align:center;border:2px solid #9a7a32;
+  .panel{width:600px;padding:30px 40px;text-align:center;border:2px solid #9a7a32;
     background:linear-gradient(#2a1e10ee,#140c06ee);box-shadow:0 0 0 3px #1a1008,0 0 40px rgba(0,0,0,.9)}
   .panel h1{margin:0;font-size:46px;letter-spacing:12px;color:#ffd77a;text-shadow:0 0 18px rgba(255,140,40,.5),0 3px 3px #000}
   .panel h2{margin:6px 0 16px;font-size:15px;font-weight:normal;letter-spacing:4px;color:#cdbf9c}
@@ -119,28 +119,6 @@
   .panel button{font:inherit;font-size:18px;letter-spacing:6px;padding:10px 40px;cursor:pointer;color:#2a1a06;
     border:2px solid #ffe3a0;background:linear-gradient(#ffd77a,#c08a28);box-shadow:0 0 14px rgba(255,180,60,.4)}
   .panel button:disabled{opacity:.5;cursor:wait}
-  .modes{display:flex;gap:18px;margin:8px 0 4px}
-  .modeCard{flex:1;cursor:pointer;padding:14px;border:2px solid #6b5326;background:rgba(0,0,0,.35);transition:all .15s;text-align:center}
-  .modeCard:hover{border-color:#ffd77a;background:rgba(255,200,90,.08);box-shadow:0 0 18px rgba(255,180,60,.35);transform:translateY(-2px)}
-  .modeCard .t{font-size:20px;color:#ffd77a;letter-spacing:3px;margin:10px 0 6px}
-  .modeCard .d{font-size:12.5px;line-height:1.8;color:#d6cbb0}
-  .modeCard .pic{position:relative;height:110px;background:linear-gradient(#2a3a26,#1a2416);border:1px solid #3a4a30;overflow:hidden}
-  .modeCard .pic i,.modeCard .pic b{position:absolute;display:block}
-  .modeCard .pic.tps i{left:28%;bottom:-10px;width:44px;height:90px;border-radius:20px 20px 0 0;background:#5a4a6a;box-shadow:inset 0 22px 0 #8a9098}
-  .modeCard .pic.tps b{right:22%;top:30px;width:22px;height:46px;border-radius:8px 8px 0 0;background:#7a6a3e}
-  .modeCard .pic.iso{background:repeating-linear-gradient(45deg,#2a3a26 0 18px,#253420 18px 36px)}
-  .modeCard .pic.iso i{left:44%;top:52px;width:16px;height:16px;border-radius:50%;background:#c9a23c;box-shadow:0 0 12px #ffcf6a}
-  .modeCard .pic.iso b{left:66%;top:22px;width:16px;height:16px;border-radius:50%;border:2px solid #ffd77a;box-shadow:0 0 8px #ffd77a}
-  .modeCard .pic.d3{background:repeating-linear-gradient(45deg,#2a3a26 0 18px,#253420 18px 36px)}
-  .modeCard .pic.d3 i{left:22%;top:66px;width:16px;height:16px;border-radius:50%;background:#c9a23c;box-shadow:0 0 12px #ffcf6a}
-  .modeCard .pic.d3 b{left:62%;top:26px;width:22px;height:22px;border-radius:50%;border:2px dashed #8ad0ff;box-shadow:0 0 8px #8ad0ff}
-  .modeCard .pic.d3::after{content:"";position:absolute;left:31%;top:44px;width:62px;height:2px;background:linear-gradient(90deg,#ffcf6a,#8ad0ff);transform:rotate(-28deg);transform-origin:left}
-  body.d3.playing.d3Hot,body.d3.playing.d3Hot canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M3 3 L18 18 M18 18 L22 14 M18 18 L14 22 M20 20 L25 25' stroke='%23000' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M3 3 L18 18 M18 18 L22 14 M18 18 L14 22 M20 20 L25 25' stroke='%23ff5a3a' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") 3 3,pointer}
-  .ctl{font-size:13px;line-height:1.9;color:#e6dcc4;text-align:left;margin:0 0 12px;padding:8px 12px;border:1px solid rgba(201,162,60,.35);background:rgba(201,162,60,.06)}
-  .ctl b{color:#ffcf6a;font-weight:normal}
-  .backMode{margin-top:10px;font-size:12px;color:#b8a878;cursor:pointer;text-decoration:underline}
-  .backMode:hover{color:#ffd77a}
-  body.iso.playing,body.iso.playing canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23000' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23ffd77a' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23ffd77a'/%3E%3C/svg%3E") 16 16,crosshair}
   #loadmsg{margin-top:12px;font-size:12px;color:#ff9a7a;min-height:16px}
   #end{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
     font-size:50px;letter-spacing:12px;text-shadow:0 0 14px #000;pointer-events:none}
@@ -178,19 +156,6 @@
   <div class="rtip">点击激活符文（无先后顺序，有技能点即可）　·　Tab / Esc 关闭并继续战斗</div></div></div>
 <div id="end"></div>
 <div id="overlay"><div class="panel">
-  <div id="panelMode">
-    <h1>怒 盾</h1>
-    <h2>剑盾战士 · 先选择视角</h2>
-    <div class="modes">
-      <div class="modeCard" data-view="tps"><div class="pic tps"><i></i><b></b></div><div class="t">越肩视角</div>
-        <div class="d">镜头在角色身后，鼠标转镜头<br>角色面朝镜头方向（strafe）<br>代入感强，看得清动作</div></div>
-      <div class="modeCard" data-view="iso"><div class="pic iso"><i></i><b></b></div><div class="t">俯视视角（暗黑式）</div>
-        <div class="d">固定斜俯视，WASD 按屏幕方向走<br>角色<b style="color:#ffd77a;font-weight:normal">始终面朝鼠标</b>，技能朝鼠标方向索敌<br>视野大，看得清全场</div></div>
-      <div class="modeCard" data-view="d3"><div class="pic d3"><i></i><b></b></div><div class="t">点击移动（暗黑 3 式）</div>
-        <div class="d">固定斜俯视，<b style="color:#8ad0ff;font-weight:normal">鼠标点哪走哪</b>，走向哪就面朝哪<br>WASD 不移动 · 1~4 出技能<br>出招时转身朝鼠标方向释放</div></div>
-    </div>
-  </div>
-  <div id="panelGame" style="display:none">
   <h1>怒 盾</h1>
   <h2>剑盾战士 · 沃玛森林 · 战斗演示</h2>
   <p><b>怒气</b>：近身作战才能积攒怒气——<b>挥剑命中</b>、<b>格挡</b>、<b>受到伤害</b>都会让怒气条上涨。怒气条本身无法使用；
@@ -202,15 +167,7 @@
     任意顺序激活符文强化技能（眩晕、更多目标、更多旋转……）。共 <em>5 波</em>，最后一波是半兽统领。</p>
   <p><b>左键</b> 三段连斩（第三段重劈可击退半兽人）；<b>右键</b> 举盾，敌人出手前一刻举盾为<em>完美格挡</em>：免伤、反震眩晕、大量怒气。
     地面出现<em>红圈</em>的攻击无法格挡，只能闪身或离开。</p>
-  <div id="ctlTps" class="ctl"><b>越肩视角：</b><b>WASD</b> 移动（相对镜头）　<b>鼠标</b> 转视角，角色面朝镜头方向　<b>Esc</b> 暂停</div>
-  <div id="ctlIso" class="ctl"><b>俯视视角：</b><b>WASD</b> 按屏幕方向移动（W = 画面上方）　<b>鼠标</b> 指向哪里，角色就<b>面朝</b>哪里（仍是 strafe：边走边朝鼠标）<br>
-    <b>左键 / Q / E</b> 都朝<b>鼠标相对英雄的方向</b>索敌：连斩吸附、盾牌冲锋、投掷盾牌优先打这个方向上的敌人　<b>滚轮</b> 缩放　<b>Esc</b> 暂停</div>
-  <div id="ctlD3" class="ctl"><b>点击移动（暗黑 3 式）：</b><b>左键点地面</b> 走过去（按住 = 一直跟着鼠标走），走向哪里就面朝哪里，<b>WASD 不移动</b><br>
-    <b>左键点敌人</b> 走到身边连斩（按住 = 一直砍）　<b>Shift + 左键</b> 原地朝鼠标方向砍　<b>右键（按住）</b> 朝鼠标方向举盾<br>
-    <b>1</b> 盾牌冲锋　<b>2</b> 投掷盾牌　<b>3</b> 旋风斩　<b>4 / 空格</b> 朝鼠标方向闪身 —— 出招时<b>先转身朝鼠标方向</b>再释放、索敌　<b>滚轮</b> 缩放　<b>Esc</b> 暂停</div>
   <button id="startBtn" disabled>加载中…</button>
-  <div class="backMode">← 重新选择视角</div>
-  </div>
   <div id="loadmsg"></div>
 </div></div>
 
@@ -298,7 +255,6 @@ const glowMat = color => new THREE.SpriteMaterial({ map: GLOW, color, blending: 
 
 // ============ 森林场景 ============
 const colliders = []; // {x,z,r}
-let SW_TREES = null;
 {
   const geo = new THREE.PlaneGeometry(260, 260, 130, 130); geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, cols = [];
@@ -330,7 +286,6 @@ let SW_TREES = null;
   const leafG = new THREE.ConeGeometry(1, 1, 8); leafG.translate(0, 0.5, 0);
   const trunks = new THREE.InstancedMesh(trunkG, std(0x4a3420, { roughness: 1 }), trees.length);
   const leaves = new THREE.InstancedMesh(leafG, std(0x2c5a2a, { roughness: 0.95, flatShading: true }), trees.length * 3);
-  SW_TREES = { trees, leaves };
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = V3(), p = V3(), lc = new THREE.Color();
   trees.forEach((t, i) => {
     const y = Math.hypot(t.x, t.z) < ARENA_R + 3 ? 0 : (Math.hypot(t.x, t.z) - ARENA_R - 3) * 0.09;
@@ -834,9 +789,7 @@ const SKILLS = [
 const cam = { yaw: Math.PI, pitch: -0.3, dist: 7, fov: 60, shake: 0, target: V3(0, 1.6, 0) };
 // ?nolock 仅用于不支持 Pointer Lock 的调试环境
 const keys = {}; let lmb = false, rmb = false, locked = false, started = false, paused = true, gameOver = false;
-const NOLOCK = new URLSearchParams(location.search).has('nolock');
-// VIEW：'tps' 越肩视角（原逻辑）/ 'iso' 俯视视角。俯视视角不锁鼠标，沿用 freeMouse 的暂停方式
-let VIEW = 'tps', freeMouse = NOLOCK;
+const freeMouse = new URLSearchParams(location.search).has('nolock');
 const SENS = 0.0022;
 let now = 0, hitStop = 0;
 
@@ -866,8 +819,6 @@ canvas.addEventListener('mousedown', e => {
 addEventListener('mouseup', e => { if (e.button === 0) lmb = false; if (e.button === 2) rmb = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('mousemove', e => {
-  ISO.mx = e.clientX; ISO.my = e.clientY;
-  if (VIEW !== 'tps') return; // 俯视 / 点击移动：鼠标只用来指方向，不转镜头
   if (!started || paused || (!locked && !freeMouse)) return;
   cam.yaw -= e.movementX * SENS;
   cam.pitch = clamp(cam.pitch - e.movementY * SENS, -1.0, 0.25);
@@ -898,16 +849,14 @@ document.addEventListener('pointerlockerror', lockFailed);
 function setPaused(v) {
   paused = v; document.body.classList.toggle('playing', !v);
   lmb = rmb = false;
-  if (v && !gameOver && !runeOpen) banner('已暂停', VIEW === 'iso' ? '点击画面或按 Esc 继续' : '点击画面锁定鼠标并继续', 9999);
+  if (v && !gameOver && !runeOpen) banner('已暂停', '点击画面锁定鼠标并继续', 9999);
   else if (bannerTimer > 100) { bannerTimer = 0.01; }
 }
 
 const _f = V3(), _r = V3(), _d = V3();
 function inputDir(out) {
-  if (VIEW === 'd3') return d3MoveDir(out); // 点击移动：方向来自鼠标点击，WASD 不移动
   const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-  const my = VIEW === 'iso' ? ISO.yaw : cam.yaw; // 俯视视角：WASD 按屏幕方向
-  _f.set(Math.sin(my), 0, Math.cos(my)); _r.set(-Math.cos(my), 0, Math.sin(my));
+  _f.set(Math.sin(cam.yaw), 0, Math.cos(cam.yaw)); _r.set(-Math.cos(cam.yaw), 0, Math.sin(cam.yaw));
   out.set(0, 0, 0).addScaledVector(_f, f).addScaledVector(_r, s);
   const l = out.length(); if (l > 0) out.multiplyScalar(1 / l); return l > 0;
 }
@@ -1389,8 +1338,8 @@ function onAttackPress() {
   else if (P.state === 'attack' && P.t > 0.08) P.queued = true;
 }
 function faceTarget(range, maxAng) {
-  const t = pickTarget(range, aimYaw(), maxAng);
-  P.yaw = t ? yawTo(P.pos, t.pos) : aimYaw();
+  const t = pickTarget(range, cam.yaw, maxAng);
+  P.yaw = t ? yawTo(P.pos, t.pos) : cam.yaw;
   return t;
 }
 function startAttack(i) {
@@ -1423,8 +1372,7 @@ function meleeHit(A) {
 function tryDodge() {
   if (P.dead || P.dodgeCd > 0) return;
   if (!(P.state === 'move' || (P.state === 'attack' && P.hitDone) || P.state === 'hurt' && P.t > 0.2)) return;
-  if (VIEW === 'd3') P.dodgeDir.set(Math.sin(aimYaw()), 0, Math.cos(aimYaw())); // 点击移动：朝鼠标方向闪身
-  else if (!inputDir(P.dodgeDir)) P.dodgeDir.set(-Math.sin(aimYaw()), 0, -Math.cos(aimYaw()));
+  if (!inputDir(P.dodgeDir)) P.dodgeDir.set(-Math.sin(cam.yaw), 0, -Math.cos(cam.yaw));
   P.state = 'dodge'; P.t = 0; P.iframe = 0.3; P.dodgeCd = 0.55; P.blocking = false;
   sfx('dodge');
 }
@@ -1447,8 +1395,8 @@ function trySkill(i) {
 }
 // 1 点：盾牌冲锋
 function startCharge() {
-  const t = pickTarget(15, aimYaw(), 0.9) || pickTarget(15, aimYaw(), 1.2);
-  P.yaw = t ? yawTo(P.pos, t.pos) : aimYaw();
+  const t = pickTarget(15, cam.yaw, 0.9) || pickTarget(15, cam.yaw, 1.2);
+  P.yaw = t ? yawTo(P.pos, t.pos) : cam.yaw;
   P.state = 'charge'; P.t = 0; P.chargeTarget = t; P.chargeHit = new Set();
   P.chargeLeft = t ? clamp(flatDist(P.pos, t.pos) - t.r - P.r + 0.2, 1.5, 15) : 9;
   sfx('grunt', 0.6); sfx('dodge');
@@ -1484,7 +1432,7 @@ const SP = { active: false, phase: 'out', plan: [], uniq: [], idx: 0, t: 0, tota
 function startThrow() {
   P.state = 'throw'; P.t = 0; SP.released = false;
   const n = 2 + rl(1, 'more');
-  const first = pickTarget(22, aimYaw(), 1.2) || pickTarget(14, null, 9);
+  const first = pickTarget(22, cam.yaw, 1.2) || pickTarget(14, null, 9);
   const uniq = [];
   if (first) {
     uniq.push(first);
@@ -1494,7 +1442,7 @@ function startThrow() {
       uniq.push(nx);
     }
     P.yaw = yawTo(P.pos, first.pos);
-  } else P.yaw = aimYaw();
+  } else P.yaw = cam.yaw;
   const plan = [...uniq];
   if (rl(1, 'force') && uniq.length) while (plan.length < n) plan.push(uniq[Math.floor(Math.random() * uniq.length)]);
   SP.plan = plan; SP.uniq = uniq; SP.via = null; SP.lastHit = null;
@@ -1617,7 +1565,7 @@ function updatePlayer(dt) {
   switch (P.state) {
     case 'move': {
       const wantBlock = rmb && !P.shieldOut;
-      P.yaw = dampAngle(P.yaw, moveFaceYaw(hasIn, wantBlock), hasIn ? 14 : 9, dt);
+      P.yaw = dampAngle(P.yaw, cam.yaw, hasIn ? 14 : 9, dt);
       if (hasIn) {
         const [lx, lz] = toLocal(_d, P.yaw);
         speed = strafeSpeed(lx, lz) * (wantBlock ? 0.42 : 1);
@@ -1645,7 +1593,7 @@ function updatePlayer(dt) {
     }
     case 'dodge': {
       const k = P.t / 0.34;
-      P.yaw = dampAngle(P.yaw, aimYaw(), 9, dt);
+      P.yaw = dampAngle(P.yaw, cam.yaw, 9, dt);
       P.pos.addScaledVector(P.dodgeDir, lerp(14, 3, k) * dt);
       const [lx, lz] = toLocal(P.dodgeDir, P.yaw), ax = Math.abs(lx);
       Object.assign(tp, { bodyY: -0.3, torX: 0.55 * Math.max(lz, 0) - 0.3 * Math.max(-lz, 0), torZ: lx * 0.35,
@@ -1695,7 +1643,7 @@ function updatePlayer(dt) {
     case 'whirl': {
       const DUR = 3 + rl(2, 'spin');
       P.spin += dt * (P.t < 0.2 ? P.t * 80 : 17);
-      P.yaw = dampAngle(P.yaw, aimYaw(), 9, dt);
+      P.yaw = dampAngle(P.yaw, cam.yaw, 9, dt);
       if (hasIn) {
         const [lx, lz] = toLocal(_d, P.yaw);
         speed = strafeSpeed(lx, lz) * 0.7; P.pos.addScaledVector(_d, speed * dt); P.mvT.copy(_d).multiplyScalar(speed);
@@ -1861,193 +1809,8 @@ function updateHUD() {
   }
 }
 
-
-// ============ 俯视视角（暗黑式）：独立模块 ============
-// 只在 VIEW === 'iso' 时生效；越肩视角下 aimYaw() 返回 cam.yaw，原逻辑不变。
-// 俯视视角：保持 strafe 移动（WASD 按屏幕方向），英雄始终面朝鼠标在地面上的落点；
-// 普攻吸附 / 盾牌冲锋 / 投掷盾牌都以“鼠标相对英雄的方向”为基准索敌。
-const ISO = { yaw: Math.PI, pitch: -0.95, dist: 17, minDist: 11, maxDist: 25, fov: 50, mx: innerWidth / 2, my: innerHeight / 2,
-  target: V3(0, 1, 0), ground: V3(0, 0, -5), aim: Math.PI };
-function aimYaw() { return VIEW === 'tps' ? cam.yaw : ISO.aim; }
-// 移动状态下身体朝向：越肩 / 俯视 = 面朝瞄准方向（strafe）；点击移动 = 走向哪就面朝哪（举盾时朝鼠标）
-function moveFaceYaw(hasIn, blocking) {
-  if (VIEW !== 'd3') return aimYaw();
-  if (blocking) return aimYaw();
-  return hasIn ? Math.atan2(_d.x, _d.z) : P.yaw;
-}
-function setView(v) {
-  VIEW = v; freeMouse = v === 'tps' ? NOLOCK : true;
-  document.body.classList.toggle('iso', v !== 'tps'); document.body.classList.toggle('d3', v === 'd3');
-  D3.move = null;
-  $('panelMode').style.display = 'none'; $('panelGame').style.display = 'block';
-  $('ctlTps').style.display = v === 'tps' ? 'block' : 'none'; $('ctlIso').style.display = v === 'iso' ? 'block' : 'none';
-  $('ctlD3').style.display = v === 'd3' ? 'block' : 'none';
-  $('help').innerHTML = v === 'd3'
-    ? '<b>左键</b> 点地面移动（按住跟随）/ 点敌人连斩　<b>Shift+左键</b> 原地砍<br><b>右键（按住）</b> 举盾　<b>1</b> 盾牌冲锋　<b>2</b> 投掷盾牌　<b>3</b> 旋风斩　<b>4 / 空格</b> 闪身<br>出招时转身朝鼠标方向　<b>Tab</b> 技能符文　<b>滚轮</b> 缩放　<b>Esc</b> 暂停'
-    : v === 'iso'
-    ? '<b>WASD</b> 按屏幕方向移动　<b>空格</b> 闪身　<b>鼠标</b> 指向 = 面朝方向<br><b>左键</b> 三段连斩　<b>右键（按住）</b> 举盾格挡<br><b>Q</b> 盾牌冲锋　<b>E</b> 投掷盾牌　<b>R</b> 旋风斩（都朝鼠标方向索敌）<br><b>Tab</b> 技能符文　<b>滚轮</b> 缩放　<b>Esc</b> 暂停'
-    : '<b>WASD</b> 移动　<b>空格</b> 闪身　<b>鼠标</b> 转视角<br><b>左键</b> 三段连斩　<b>右键（按住）</b> 举盾格挡<br><b>Q</b> 盾牌冲锋　<b>E</b> 投掷盾牌　<b>R</b> 旋风斩<br><b>Tab</b> 技能符文　<b>Esc</b> 暂停';
-  aimRing.visible = v === 'iso';
-  ['sk0', 'sk1', 'sk2'].forEach((id, i) => { const k = $(id).querySelector('.key'); if (k) k.textContent = v === 'd3' ? String(i + 1) : 'QER'[i]; });
-  if (v === 'tps') restoreTrees();
-}
-document.querySelectorAll('.modeCard').forEach(el => el.addEventListener('click', () => setView(el.dataset.view)));
-document.querySelectorAll('.backMode').forEach(el => el.addEventListener('click', () => { $('panelMode').style.display = 'block'; $('panelGame').style.display = 'none'; }));
-addEventListener('wheel', e => { if (VIEW === 'iso' && started && !paused) ISO.dist = clamp(ISO.dist + Math.sign(e.deltaY) * 1.5, ISO.minDist, ISO.maxDist); }, { passive: true });
-
-// 鼠标落点（场地是平地 y = 0；场外有坡度，用高度近似也够用）
-const _iro = V3(), _ird = V3();
-function updateIsoAim() {
-  _iro.copy(camera.position);
-  _ird.set(ISO.mx / innerWidth * 2 - 1, -(ISO.my / innerHeight) * 2 + 1, 0.5).unproject(camera).sub(_iro).normalize();
-  if (_ird.y < -0.02) {
-    const t = (0 - _iro.y) / _ird.y;
-    ISO.ground.set(_iro.x + _ird.x * t, 0, _iro.z + _ird.z * t);
-  }
-  if (flatDist(P.pos, ISO.ground) > 0.35) ISO.aim = yawTo(P.pos, ISO.ground);
-  aimRing.position.set(ISO.ground.x, 0.06, ISO.ground.z);
-  aimRing.rotation.z += 0.03;
-}
-const aimRing = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.55, 32, 1, 0, Math.PI * 1.6),
-  new THREE.MeshBasicMaterial({ color: 0xffd77a, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-aimRing.rotation.x = -Math.PI / 2; aimRing.visible = false; scene.add(aimRing);
-
-function updateCameraIso(dt) {
-  ISO.target.x = damp(ISO.target.x, P.pos.x, 9, dt);
-  ISO.target.z = damp(ISO.target.z, P.pos.z, 9, dt);
-  ISO.target.y = damp(ISO.target.y, P.pos.y + 1.0, 9, dt);
-  const fov = P.state === 'whirl' ? 54 : ISO.fov;
-  cam.fov = damp(cam.fov, fov, 6, dt); camera.fov = cam.fov; camera.updateProjectionMatrix();
-  const cp = Math.cos(ISO.pitch);
-  _f.set(Math.sin(ISO.yaw) * cp, Math.sin(ISO.pitch), Math.cos(ISO.yaw) * cp);
-  camera.position.copy(ISO.target).addScaledVector(_f, -ISO.dist);
-  camera.lookAt(ISO.target);
-  if (cam.shake > 0) {
-    const s = cam.shake * cam.shake * 0.45;
-    camera.position.x += rand(-s, s); camera.position.y += rand(-s, s); camera.position.z += rand(-s, s);
-    cam.shake = Math.max(0, cam.shake - dt * 2.5);
-  }
-  camera.getWorldDirection(camFwd);
-  sun.position.copy(P.pos).add(SUN_OFF); sun.target.position.copy(P.pos);
-  updateIsoAim();
-  updateD3(dt);
-  hideOccludingTrees(dt);
-}
-
-// 挡住英雄的树冠临时缩到看不见（离开后恢复）
-const _tm = new THREE.Matrix4(), _tz = new THREE.Matrix4().makeScale(0.001, 0.001, 0.001);
-let leafOrig = null, treeHidden = new Set(), treeT = 0;
-function hideOccludingTrees(dt) {
-  if (!SW_TREES) return;
-  treeT -= dt; if (treeT > 0) return; treeT = 0.12;
-  const L = SW_TREES.leaves;
-  if (!leafOrig) { leafOrig = []; for (let i = 0; i < L.count; i++) { L.getMatrixAt(i, _tm); leafOrig.push(_tm.clone()); } }
-  const bx = -camFwd.x, bz = -camFwd.z, bl = Math.hypot(bx, bz) || 1, want = new Set();
-  SW_TREES.trees.forEach((t, i) => {
-    const dx = t.x - P.pos.x, dz = t.z - P.pos.z;
-    const along = (dx * bx + dz * bz) / bl, side = Math.abs(dx * bz - dz * bx) / bl;
-    if (along > -2.5 * t.s && along < 13 && side < 2.6 * t.s + 1) want.add(i);
-  });
-  let dirty = false;
-  for (const i of treeHidden) if (!want.has(i)) { for (let k = 0; k < 3; k++) L.setMatrixAt(i * 3 + k, leafOrig[i * 3 + k]); dirty = true; }
-  for (const i of want) if (!treeHidden.has(i)) { for (let k = 0; k < 3; k++) L.setMatrixAt(i * 3 + k, _tz); dirty = true; }
-  treeHidden = want; if (dirty) L.instanceMatrix.needsUpdate = true;
-}
-function restoreTrees() {
-  if (!SW_TREES || !leafOrig) return;
-  const L = SW_TREES.leaves;
-  for (const i of treeHidden) for (let k = 0; k < 3; k++) L.setMatrixAt(i * 3 + k, leafOrig[i * 3 + k]);
-  treeHidden = new Set(); L.instanceMatrix.needsUpdate = true;
-}
-
-// ============ 点击移动模式（暗黑 3 式）：独立模块 ============
-// 鼠标点哪走哪、走向哪就面朝哪（不再 strafe）；WASD 不移动；1~4 出技能。
-// 出招 / 举盾 / 闪身时转身朝“鼠标相对英雄的方向”，并沿用原来的索敌逻辑（aimYaw() = 鼠标方向）。
-const D3 = { move: null, hover: null, lmb: false, atkHold: false };
-const _dro = V3(), _drd = V3(), _dc = V3();
-function d3Hover() {
-  _dro.copy(camera.position);
-  _drd.set(ISO.mx / innerWidth * 2 - 1, -(ISO.my / innerHeight) * 2 + 1, 0.5).unproject(camera).sub(_dro).normalize();
-  let best = 1e9, hit = null;
-  for (const e of enemies) {
-    if (e.dead) continue;
-    e.chest(_dc); _dc.y -= 0.3 * e.T.scale; _dc.sub(_dro);
-    const r = e.r * 1.9 + 0.2, b = _dc.dot(_drd), cc = _dc.lengthSq() - r * r, disc = b * b - cc;
-    if (b > 0 && disc > 0 && b - Math.sqrt(disc) < best) { best = b - Math.sqrt(disc); hit = e; }
-  }
-  D3.hover = hit;
-  document.body.classList.toggle('d3Hot', !!hit);
-}
-const D3_REACH = 2.3; // 走到这个距离（扣除敌人半径）就停下开砍
-function d3MoveDir(out) {
-  const m = D3.move;
-  if (!m || P.dead) { out.set(0, 0, 0); return false; }
-  let tx, tz;
-  if (m.kind === 'enemy') {
-    if (m.e.dead) { D3.move = null; out.set(0, 0, 0); return false; }
-    if (flatDist(P.pos, m.e.pos) - m.e.r <= D3_REACH) { // 够得着：停下砍
-      D3.move = null; out.set(0, 0, 0);
-      if (P.state === 'move') onAttackPress();
-      return false;
-    }
-    tx = m.e.pos.x; tz = m.e.pos.z;
-  } else {
-    tx = m.x; tz = m.z;
-    if (Math.hypot(tx - P.pos.x, tz - P.pos.z) < 0.3) { D3.move = null; out.set(0, 0, 0); return false; }
-  }
-  out.set(tx - P.pos.x, 0, tz - P.pos.z).normalize();
-  return true;
-}
-function d3Click(force) {
-  d3Hover();
-  if (force) { D3.move = null; D3.atkHold = true; onAttackPress(); return; }         // Shift：原地朝鼠标砍
-  if (D3.hover) {
-    D3.atkHold = true;
-    if (flatDist(P.pos, D3.hover.pos) - D3.hover.r <= D3_REACH) { D3.move = null; onAttackPress(); }
-    else D3.move = { kind: 'enemy', e: D3.hover };
-  } else {
-    D3.atkHold = false;
-    D3.move = { kind: 'point', x: ISO.ground.x, z: ISO.ground.z };
-    d3Ping(ISO.ground);
-  }
-}
-canvas.addEventListener('mousedown', e => {
-  if (VIEW !== 'd3' || !started || paused || gameOver || runeOpen || e.button !== 0) return; // 右键交给原逻辑（举盾）
-  e.stopImmediatePropagation();
-  lmb = true; D3.lmb = true;
-  updateIsoAim(); d3Click(e.shiftKey);
-}, { capture: true });
-addEventListener('mouseup', e => { if (e.button === 0) { D3.lmb = false; D3.atkHold = false; } });
-addEventListener('keydown', e => {
-  if (VIEW !== 'd3' || !started || paused || gameOver || runeOpen || e.repeat) return;
-  if (e.code === 'Digit4') { e.preventDefault(); tryDodge(); return; }
-  if (['Digit1', 'Digit2', 'Digit3', 'KeyQ', 'KeyE', 'KeyR'].includes(e.code)) D3.move = null; // 出技能就停下脚步
-}, { capture: true });
-function updateD3(dt) {
-  if (VIEW !== 'd3' || !started || paused) { d3HoverRing.visible = false; return; }
-  d3Hover();
-  if (D3.lmb && !D3.atkHold && P.state === 'move') D3.move = { kind: 'point', x: ISO.ground.x, z: ISO.ground.z }; // 按住：跟随鼠标
-  if (D3.lmb && D3.atkHold && !D3.move) onAttackPress(); // 按住砍：连段自动接上
-  const h = D3.hover;
-  d3HoverRing.visible = !!h;
-  if (h) { d3HoverRing.position.set(h.pos.x, 0.05, h.pos.z); d3HoverRing.scale.setScalar(h.T.scale); }
-  for (let i = d3Pings.length - 1; i >= 0; i--) {
-    const p = d3Pings[i]; p.t += dt; const k = p.t / 0.45;
-    if (k >= 1) { scene.remove(p.m); p.m.material.dispose(); d3Pings.splice(i, 1); continue; }
-    p.m.scale.setScalar(1 + k * 1.6); p.m.material.opacity = 1 - k;
-  }
-}
-const d3HoverRing = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.1, 40), new THREE.MeshBasicMaterial({ color: 0xff5a3a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-d3HoverRing.rotation.x = -Math.PI / 2; d3HoverRing.visible = false; scene.add(d3HoverRing);
-const d3PingGeo = new THREE.RingGeometry(0.3, 0.45, 32), d3Pings = [];
-function d3Ping(p) {
-  const m = new THREE.Mesh(d3PingGeo, new THREE.MeshBasicMaterial({ color: 0x8ad0ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  m.rotation.x = -Math.PI / 2; m.position.set(p.x, 0.06, p.z); scene.add(m); d3Pings.push({ m, t: 0 });
-}
-
 // ============ 镜头 ============
 function updateCamera(dt) {
-  if (VIEW !== 'tps') { updateCameraIso(dt); return; }
   cam.target.x = damp(cam.target.x, P.pos.x, 12, dt);
   cam.target.z = damp(cam.target.z, P.pos.z, 12, dt);
   cam.target.y = damp(cam.target.y, P.pos.y + 1.6, 12, dt);
@@ -2121,7 +1884,7 @@ btn.addEventListener('click', () => {
   started = true;
   requestLock();
 });
-window.__dbg = { P, enemies, cam, spawnEnemy, addRage, hero, runeLv, SP, ISO, D3, setView, aimYaw, get VIEW() { return VIEW; } };
+window.__dbg = { P, enemies, cam, spawnEnemy, addRage, hero, runeLv, SP };
 </script>
 </body>
 </html>

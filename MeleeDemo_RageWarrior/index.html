@@ -167,27 +167,6 @@
   .panel table{width:100%;border-collapse:collapse;font-size:12.5px;color:#d6cbb0;margin:6px 0 16px}
   .panel td,.panel th{border:1px solid rgba(201,162,60,.3);padding:5px 8px;text-align:left}
   .panel th{color:#ffcf6a;font-weight:normal;background:rgba(201,162,60,.08)}
-
-  .modes{display:flex;gap:18px;margin:6px 0 4px}
-  .modeCard{flex:1;cursor:pointer;padding:14px;border:2px solid #6b5326;background:rgba(0,0,0,.35);transition:all .15s;text-align:center}
-  .modeCard:hover{border-color:#ffd77a;background:rgba(255,200,90,.08);box-shadow:0 0 18px rgba(255,180,60,.35);transform:translateY(-2px)}
-  .modeCard .t{font-size:20px;color:#ffd77a;letter-spacing:3px;margin:10px 0 6px}
-  .modeCard .d{font-size:12.5px;line-height:1.8;color:#d6cbb0}
-  .modeCard .pic{position:relative;height:110px;background:linear-gradient(#2a3a26,#1a2416);border:1px solid #3a4a30;overflow:hidden}
-  .modeCard .pic i,.modeCard .pic b{position:absolute;display:block}
-  .modeCard .pic.tps i{left:28%;bottom:-10px;width:44px;height:90px;border-radius:20px 20px 0 0;background:#5a3a24;box-shadow:inset 0 22px 0 #8a9098}
-  .modeCard .pic.tps b{right:22%;top:30px;width:22px;height:46px;border-radius:8px 8px 0 0;background:#7a6a3e}
-  .modeCard .pic.iso{background:repeating-linear-gradient(45deg,#2a3a26 0 18px,#253420 18px 36px)}
-  .modeCard .pic.iso i{left:46%;top:50px;width:16px;height:16px;border-radius:50%;background:#c9a23c;box-shadow:0 0 0 6px rgba(255,80,60,.0),0 0 12px #ffcf6a}
-  .modeCard .pic.iso b{left:62%;top:26px;width:14px;height:14px;border-radius:50%;background:#7a6a3e;box-shadow:-60px 50px 0 #7a6a3e,30px 52px 0 #7a6a3e}
-  #panelGame .ctl{font-size:13px;line-height:1.9;color:#e6dcc4;text-align:left;margin:0 0 12px;padding:8px 12px;border:1px solid rgba(201,162,60,.35);background:rgba(201,162,60,.06)}
-  #panelGame .ctl b{color:#ffcf6a;font-weight:normal}
-  .backMode{margin-top:10px;font-size:12px;color:#b8a878;cursor:pointer;text-decoration:underline}
-  .backMode:hover{color:#ffd77a}
-  body.iso #crosshair{display:none}
-  body.iso.playing,body.iso.playing canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cpath d='M2 2 L20 9 L12 12 L9 20 Z' fill='%23ffd77a' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E") 2 2,default}
-  body.iso.playing.isoHot,body.iso.playing.isoHot canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M3 3 L18 18 M18 18 L22 14 M18 18 L14 22 M20 20 L25 25' stroke='%23000' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M3 3 L18 18 M18 18 L22 14 M18 18 L14 22 M20 20 L25 25' stroke='%23ff5a3a' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") 3 3,pointer}
-  body.iso.playing.isoLoot,body.iso.playing.isoLoot canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cpath d='M2 2 L20 9 L12 12 L9 20 Z' fill='%235ee05e' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E") 2 2,pointer}
 </style>
 </head>
 <body>
@@ -226,43 +205,19 @@
 </div>
 <div id="death">你已阵亡<small>按 R 原地复活</small></div>
 <div id="overlay"><div class="panel">
-  <div id="panelMode">
-    <h1>怒气战士</h1>
-    <h2>沃玛森林 · 先选择视角</h2>
-    <div class="modes">
-      <div class="modeCard" data-view="tps">
-        <div class="pic tps"><i></i><b></b></div>
-        <div class="t">越肩视角</div>
-        <div class="d">镜头在角色身后，鼠标转镜头<br>WASD 移动 · Q / E / R / 空格 出牌<br>代入感强，看得清动作</div>
-      </div>
-      <div class="modeCard" data-view="iso">
-        <div class="pic iso"><i></i><b></b></div>
-        <div class="t">俯视视角（暗黑式）</div>
-        <div class="d">固定斜俯视，鼠标点哪走哪<br>左键移动 / 攻击 · 右键 + 1~4 出牌<br>视野大，看得清全场</div>
-      </div>
-    </div>
-  </div>
-  <div id="panelGame" style="display:none">
-    <h1>怒气战士</h1>
-    <h2 id="viewTitle">沃玛森林 · 读牌出牌的近战</h2>
-    <div id="ctlTps" class="ctl"><b>越肩视角操作：</b><b>WASD</b> 移动　<b>鼠标</b> 转镜头　<b>左键</b> 选中准星下的敌人　<b>Tab</b> 切换目标　<b>F</b> 拾取　<b>Esc</b> 暂停</div>
-    <div id="ctlIso" class="ctl"><b>俯视视角操作：</b><b>左键</b> 点地面走过去（按住拖动跟随鼠标）/ 点敌人走到攻击距离站桩 / 点地上的武器走过去换上<br>
-      <b>右键 或 1</b> 裂斩　<b>2</b> 斩首　<b>3</b> 旋风斩　<b>4</b> 护盾 —— 优先打鼠标指着的敌人，<b>够不着会先走过去、站定后自动放出</b><br>
-      <b>Tab</b> 切换目标　<b>F</b> 拾取　<b>滚轮</b> 拉近 / 拉远　<b>Esc</b> 暂停</div>
-
+  <h1>怒气战士</h1>
+  <h2>沃玛森林 · 读牌出牌的近战</h2>
   <p><b>站桩：</b>只有<b>站定不动</b>才会普攻和出招，出招动作期间也不能走——专心看牌，不用边跑边打。<br><b>节奏：</b>站在敌人身边自动普攻（2 秒一刀）→ 怒气条满 100 变成 <b>1 个怒气点</b>（最多存 3 个，满了再攒就浪费）。</p>
   <table>
     <tr><th>牌</th><th>花费</th><th>效果</th></tr>
-    <tr><td><b><span class="kQ">Q</span> 裂斩</b>（摸牌）</td><td>1 点</td><td>伤害 26，有 <b>50%</b> 触发：30%【破绽】/ 20%【狂怒】/ 50% 什么都没有</td></tr>
-    <tr><td><b><span class="kE">E</span> 斩首</b>（应对【破绽】）</td><td>1 点</td><td>平时只有 20 伤害（不划算）；<b>有破绽 ×3 必暴击</b>；目标血量 &lt;25% 再 ×2</td></tr>
-    <tr><td><b><span class="kR">R</span> 旋风斩</b>（应对【狂怒】的临时牌）</td><td>免费</td><td>只在狂怒时出现，打身边所有敌人各 30，<b>每打到一个 +15 怒气</b>：人越多越赚</td></tr>
-    <tr><td><b><span class="kB">空格</span> 护盾</b>（防守牌）</td><td>2 点</td><td>头顶出现护盾，<b>吸收伤害总量 = 最大生命的一半</b>，持续 30 秒；打空提前消失。被吸收的伤害照样产生怒气。半兽人每 3 刀一次<b>重击（橙光预警）</b>，伤害 2.5 倍</td></tr>
+    <tr><td><b>Q 裂斩</b>（摸牌）</td><td>1 点</td><td>伤害 26，有 <b>50%</b> 触发：30%【破绽】/ 20%【狂怒】/ 50% 什么都没有</td></tr>
+    <tr><td><b>E 斩首</b>（应对【破绽】）</td><td>1 点</td><td>平时只有 20 伤害（不划算）；<b>有破绽 ×3 必暴击</b>；目标血量 &lt;25% 再 ×2</td></tr>
+    <tr><td><b>R 旋风斩</b>（应对【狂怒】的临时牌）</td><td>免费</td><td>只在狂怒时出现，打身边所有敌人各 30，<b>每打到一个 +15 怒气</b>：人越多越赚</td></tr>
+    <tr><td><b>空格 护盾</b>（防守牌）</td><td>2 点</td><td>头顶出现护盾，<b>吸收伤害总量 = 最大生命的一半</b>，持续 30 秒；打空提前消失。被吸收的伤害照样产生怒气。半兽人每 3 刀一次<b>重击（橙光预警）</b>，伤害 2.5 倍</td></tr>
   </table>
-  <p><b>武器：</b>半兽人会掉落<b>战锤 / 战斧 / 长戟 / 钉头锤 / 屠刀 / 重剑</b>，<span class="kLoot">走过去按 <b>F</b> 换上</span>（旧武器留在地上，随时换回）。品质 白→绿→蓝→紫→橙，每档伤害约 +15%，最高 ×1.7；不同类型攻速和特性不同。</p>
+  <p><b>武器：</b>半兽人会掉落<b>战锤 / 战斧 / 长戟 / 钉头锤 / 屠刀 / 重剑</b>，走过去按 <b>F</b> 换上（旧武器留在地上，随时换回）。品质 白→绿→蓝→紫→橙，每档伤害约 +15%，最高 ×1.7；不同类型攻速和特性不同。</p>
   <p><b>思路：</b>点数只有 3 个，要在“摸牌 / 兑现 / 保命”之间分配：破绽留 1 点打斩首；狂怒等敌人扎堆再旋风；被围或首领出现时花 2 点开护盾。三个点全花在裂斩上，摸到破绽却没点可用，就亏了。</p>
-    <button id="startBtn" disabled>加载中…</button><button id="startBtnIso" disabled>加载中…</button>
-    <div class="backMode">← 重新选择视角</div>
-  </div>
+  <button id="startBtn" disabled>加载中…</button>
   <div id="loadmsg"></div>
 </div></div>
 <script>
@@ -463,7 +418,6 @@ function addCollider(x, z, r, h) { colliders.push({ x, z, r, h, base: H(x, z) })
 }
 
 const dummy = new THREE.Object3D();
-let TREES = null; // 俯视视角用：隐藏挡住角色的树冠
 { // 树
   const trees = [];
   let tries = 0;
@@ -500,7 +454,6 @@ let TREES = null; // 俯视视角用：隐藏挡住角色的树冠
     cans.forEach((m, k) => { m.setMatrixAt(i, dummy.matrix); col.setHSL(hue + k * 0.01, rand(0.35, 0.55), l + k * 0.025); m.setColorAt(i, col); });
     if (t.coll) { addCollider(t.x, t.z, 0.45 * t.s, 4.0 * t.s); colliders[colliders.length - 1].canopy = 2.4 * t.s; }
   });
-  TREES = { trees, trunks, cans };
 }
 
 { // 岩石
@@ -913,7 +866,6 @@ function banner(text, sub = '', dur = 2.5) { const b = $('banner'); b.innerHTML 
 // ============ 镜头 / 输入 ============
 const cam = { yaw: START_YAW, pitch: -0.16, dist: 5.4, shoulder: 0.3, height: 0.7, fov: 62,
   target: V3(START.x, H(START.x, START.z) + 1.5, START.z), shake: 0 };
-let VIEW = 'tps'; // 'tps' 越肩视角（原逻辑） | 'iso' 俯视视角（iso_mode 模块）
 const keys = {}; let lmb = false, rmb = false, locked = false, freeMouse = false, started = false, paused = true;
 const pressed = {}; // 本帧按下（边沿触发）
 const SENS = 0.0022; let sensMul = 1;
@@ -935,7 +887,6 @@ addEventListener('contextmenu', e => e.preventDefault());
 let mouseX = innerWidth / 2, mouseY = innerHeight / 2;
 addEventListener('mousemove', e => {
   mouseX = e.clientX; mouseY = e.clientY;
-  if (VIEW === 'iso') return; // 俯视视角：鼠标不转镜头
   if ((!locked && !freeMouse) || paused) return;
   const mx = clamp(e.movementX, -250, 250), my = clamp(e.movementY, -250, 250); // 过滤偶发的跳变
   cam.yaw -= mx * SENS * sensMul;
@@ -1453,7 +1404,6 @@ function handleInput() {
   if (take('LMB')) { if (aimInfo.orc && alive(aimInfo.orc)) { player.target = aimInfo.orc; } else player.target = autoTarget(); }
 }
 function moveInput() {
-  if (VIEW === 'iso') return isoMoveInput(); // 俯视视角：点击移动
   const ix = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), iz = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
   const fx_ = Math.sin(cam.yaw), fz = Math.cos(cam.yaw), rx = -Math.cos(cam.yaw), rz = Math.sin(cam.yaw);
   const v = V3(fx_ * iz + rx * ix, 0, fz * iz + rz * ix); if (v.lengthSq() > 0) v.normalize(); return v;
@@ -1747,257 +1697,6 @@ function refreshWeaponPanel() {
 }
 
 equipWeapon(makeWeapon('sword', 0), true);
-
-// ============ 俯视 ARPG 视角（暗黑式）：独立模块，只通过 VIEW 开关接入 ============
-// 原越肩视角的输入 / 镜头 / 逻辑保持不变；这里只在 VIEW === 'iso' 时生效。
-//
-// 俯视视角操作：
-//   左键点地面 → 走过去（按住拖动 = 持续跟随鼠标走）
-//   左键点敌人 → 选为目标并走到攻击距离停下，站桩自动普攻
-//   左键点地上的武器 → 走过去自动换上
-//   右键 / 1 → 裂斩　2 → 斩首　3 → 旋风斩　4 → 护盾
-//   技能会优先打鼠标指着的敌人；够不着时先走过去，站定后自动放出（排队）
-//   Tab 切换目标　F 拾取　Esc 暂停　鼠标滚轮 拉近 / 拉远
-const ISO = {
-  yaw: START_YAW, pitch: -0.95, dist: 18, minDist: 11, maxDist: 26, fov: 48,
-  target: V3(START.x, H(START.x, START.z), START.z),
-  mx: innerWidth / 2, my: innerHeight / 2,
-  ground: V3(), groundOk: false, hoverOrc: null, hoverLoot: null,
-  move: null,        // { kind: 'point' | 'orc' | 'loot', x, z, o, L }
-  lmbHeld: false, queue: null,
-};
-function setView(v) {
-  VIEW = v;
-  document.body.classList.toggle('iso', v === 'iso');
-  const keysT = v === 'iso' ? ['1 / 右键', '2', '3', '4'] : ['Q', 'E', 'R', '空格'];
-  ['sQ', 'sE', 'sR', 'sB'].forEach((id, i) => { $(id).querySelector('.key').textContent = keysT[i]; });
-  $('help').innerHTML = v === 'iso'
-    ? '<b>左键</b> 点地面移动 / 点敌人攻击 / 点武器拾取<br><b>右键 / 1</b> 裂斩　<b>2</b> 斩首　<b>3</b> 旋风斩　<b>4</b> 护盾<br>技能够不着会先走过去再放　<b>Tab</b> 切目标　<b>滚轮</b> 缩放　<b>Esc</b> 暂停'
-    : '<b>WASD</b> 移动　<b>鼠标</b> 转镜头　<b>左键</b> 选中准星下的敌人　<b>Tab</b> 切换目标<br><b>站定</b>在目标身边会自动攻击（移动时不出招）<br><b>Q</b> 裂斩　<b>E</b> 斩首　<b>R</b> 旋风斩（狂怒时）　<b>空格</b> 护盾（2 点）<br><b>F</b> 拾取 / 换武器　<b>Esc</b> 暂停';
-  $('panelMode').style.display = 'none'; $('panelGame').style.display = 'block';
-  $('ctlTps').style.display = v === 'tps' ? 'block' : 'none'; $('ctlIso').style.display = v === 'iso' ? 'block' : 'none';
-  $('startBtn').style.display = v === 'tps' ? '' : 'none'; $('startBtnIso').style.display = v === 'iso' ? '' : 'none';
-  $('viewTitle').textContent = v === 'iso' ? '沃玛森林 · 俯视视角（暗黑式）' : '沃玛森林 · 越肩视角';
-  const tbl = { kQ: ['Q', '右键 / 1'], kE: ['E', '2'], kR: ['R', '3'], kB: ['空格', '4'] };
-  for (const c in tbl) document.querySelectorAll('.' + c).forEach(el => { el.textContent = tbl[c][v === 'iso' ? 1 : 0]; });
-  document.querySelectorAll('.kLoot').forEach(el => { el.innerHTML = v === 'iso' ? '<b>左键点它</b>就会走过去换上' : '走过去按 <b>F</b> 换上'; });
-  if (v === 'iso') { if (document.pointerLockElement) document.exitPointerLock(); }
-  else restoreTrees();
-}
-function showModePicker() { $('panelMode').style.display = 'block'; $('panelGame').style.display = 'none'; }
-document.querySelectorAll('.modeCard').forEach(el => el.addEventListener('click', () => setView(el.dataset.view)));
-document.querySelectorAll('.backMode').forEach(el => el.addEventListener('click', showModePicker));
-$('startBtnIso').addEventListener('click', () => {
-  unlockAudio();
-  if (!started) { started = true; setTimeout(() => banner('沃玛森林', '站桩对打 · 读牌出牌', 3), 300); }
-  setPaused(false);
-});
-
-// ---- 鼠标射线 ----
-const _ro = V3(), _rd = V3(), _rc = V3();
-function mouseRay() {
-  const nx = ISO.mx / innerWidth * 2 - 1, ny = -(ISO.my / innerHeight) * 2 + 1;
-  _ro.copy(camera.position);
-  _rd.set(nx, ny, 0.5).unproject(camera).sub(_ro).normalize();
-}
-function computeAimIso() {
-  mouseRay();
-  let best = 200, hit = null;
-  for (const e of orcs) { // 敌人：比越肩视角放宽一点判定半径，方便点中
-    if (e.dead) continue; e.center(_c); _rc.subVectors(_ro, _c);
-    const r = e.hitR * 1.25, b = _rc.dot(_rd), cc = _rc.lengthSq() - r * r, disc = b * b - cc;
-    if (disc > 0) { const t = -b - Math.sqrt(disc); if (t > 0 && t < best) { best = t; hit = e; } }
-  }
-  ISO.groundOk = false; // 地面点
-  let prev = 0;
-  for (let t = 0.5; t < 120; t += 0.5) {
-    if (_ro.y + _rd.y * t < H(_ro.x + _rd.x * t, _ro.z + _rd.z * t)) {
-      let lo = prev, hi = t;
-      for (let i = 0; i < 7; i++) { const m = (lo + hi) / 2; if (_ro.y + _rd.y * m < H(_ro.x + _rd.x * m, _ro.z + _rd.z * m)) hi = m; else lo = m; }
-      ISO.ground.copy(_ro).addScaledVector(_rd, hi); ISO.groundOk = true; break;
-    }
-    prev = t;
-  }
-  ISO.hoverOrc = hit;
-  aimInfo.orc = hit;
-  aimInfo.point.copy(ISO.groundOk ? ISO.ground : _ro.clone().addScaledVector(_rd, 30));
-  // 地上的武器：鼠标落点 1.4 米内，或屏幕上靠近它的名字
-  ISO.hoverLoot = null;
-  if (!hit && ISO.groundOk) {
-    let bd = 1.4;
-    for (const L of loots) { const d = Math.hypot(L.x - ISO.ground.x, L.z - ISO.ground.z); if (d < bd) { bd = d; ISO.hoverLoot = L; } }
-  }
-  document.body.classList.toggle('isoHot', !!hit);
-  document.body.classList.toggle('isoLoot', !!ISO.hoverLoot);
-}
-
-// ---- 点击移动 ----
-function isoClick() {
-  if (player.dead) return;
-  computeAimIso(); // 用点击这一刻的鼠标位置
-  if (ISO.hoverOrc && alive(ISO.hoverOrc)) {
-    player.target = ISO.hoverOrc; ISO.queue = null;
-    ISO.move = inRange(ISO.hoverOrc) ? null : { kind: 'orc', o: ISO.hoverOrc };
-    pingRing(ISO.hoverOrc.pos, 0xff5040);
-  } else if (ISO.hoverLoot) {
-    ISO.move = { kind: 'loot', L: ISO.hoverLoot, x: ISO.hoverLoot.x, z: ISO.hoverLoot.z };
-    pingRing(V3(ISO.hoverLoot.x, 0, ISO.hoverLoot.z), RARITY[ISO.hoverLoot.w.tier].hex);
-  } else if (ISO.groundOk) {
-    ISO.move = { kind: 'point', x: ISO.ground.x, z: ISO.ground.z }; ISO.queue = null;
-    pingRing(ISO.ground, 0x8ad0ff);
-  }
-}
-function isoMoveInput() {
-  const P = player, mv = ISO.move;
-  if (ISO.lmbHeld && !paused && ISO.groundOk && !(mv && mv.kind !== 'point')) {
-    ISO.move = { kind: 'point', x: ISO.ground.x, z: ISO.ground.z }; // 按住拖动：持续朝鼠标走
-  }
-  const m = ISO.move; if (!m) return V3();
-  let tx = m.x, tz = m.z, stop = 0.25;
-  if (m.kind === 'orc') {
-    if (!alive(m.o)) { ISO.move = null; return V3(); }
-    if (inRange(m.o)) { ISO.move = null; return V3(); } // 到攻击距离：停下站桩
-    tx = m.o.pos.x; tz = m.o.pos.z; stop = 0;
-  } else if (m.kind === 'loot') {
-    if (!loots.includes(m.L)) { ISO.move = null; return V3(); }
-    stop = 1.1;
-  }
-  const dx = tx - P.pos.x, dz = tz - P.pos.z, d = Math.hypot(dx, dz);
-  if (d <= stop) {
-    if (m.kind === 'loot' && nearLoot === m.L) tryPickup();
-    ISO.move = null; return V3();
-  }
-  return V3(dx / d, 0, dz / d);
-}
-
-// ---- 技能：指向敌人 + 够不着就先走过去（排队） ----
-const ISO_SKILL = { Digit1: 'KeyQ', RMB: 'KeyQ', Digit2: 'KeyE', Digit3: 'KeyR', Digit4: 'Space', KeyQ: 'KeyQ', KeyE: 'KeyE', KeyR: 'KeyR', Space: 'Space' };
-const NEEDS_TARGET = { KeyQ: true, KeyE: true };
-function isoSkill(src) {
-  const code = ISO_SKILL[src]; if (!code) return;
-  computeAimIso();
-  const P = player;
-  if (NEEDS_TARGET[code]) {
-    if (ISO.hoverOrc && alive(ISO.hoverOrc)) P.target = ISO.hoverOrc;
-    if (!alive(P.target)) P.target = autoTarget();
-    if (alive(P.target) && !inRange(P.target)) { // 先走过去，站定后再放
-      ISO.queue = { code, o: P.target, t: 3 };
-      ISO.move = { kind: 'orc', o: P.target };
-      return;
-    }
-  }
-  ISO.queue = null;
-  if (code !== 'Space' && code !== 'KeyR') ISO.move = null; // 出招就停下（站桩）
-  pressed[code] = true;
-}
-function updateIsoQueue(dt) {
-  const q = ISO.queue; if (!q) return;
-  q.t -= dt;
-  if (q.t <= 0 || !alive(q.o)) { ISO.queue = null; return; }
-  if (inRange(q.o) && !player.moving && player.standT >= SETTLE_T && player.gcd <= 0 && !player.act) {
-    player.target = q.o; pressed[q.code] = true; ISO.queue = null;
-  }
-}
-
-// ---- 输入（只在俯视视角生效；捕获阶段处理，避免触发越肩视角的按键逻辑） ----
-addEventListener('mousemove', e => { ISO.mx = e.clientX; ISO.my = e.clientY; });
-canvas.addEventListener('mousedown', e => {
-  if (VIEW !== 'iso' || paused || !started) return;
-  e.stopImmediatePropagation();
-  if (e.button === 0) { ISO.lmbHeld = true; isoClick(); }
-  if (e.button === 2) isoSkill('RMB');
-}, { capture: true });
-addEventListener('mouseup', e => { if (e.button === 0) ISO.lmbHeld = false; });
-addEventListener('keydown', e => {
-  if (VIEW !== 'iso' || !started) return;
-  if (e.code === 'Escape') { e.preventDefault(); setPaused(!paused); e.stopImmediatePropagation(); return; }
-  if (paused) return;
-  if (player.dead && e.code === 'KeyR') return; // 交给原逻辑：复活
-  if (ISO_SKILL[e.code]) {
-    e.preventDefault(); e.stopImmediatePropagation();
-    if (!e.repeat) isoSkill(e.code);
-    return;
-  }
-  if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.stopImmediatePropagation(); // 俯视视角不用 WASD
-}, { capture: true });
-addEventListener('wheel', e => {
-  if (VIEW !== 'iso' || paused) return;
-  ISO.dist = clamp(ISO.dist + Math.sign(e.deltaY) * 1.5, ISO.minDist, ISO.maxDist);
-}, { passive: true });
-
-// ---- 镜头：固定斜俯视，平滑跟随 ----
-function updateCameraIso(dt) {
-  const P = player;
-  ISO.target.x = damp(ISO.target.x, P.pos.x, 8, dt);
-  ISO.target.z = damp(ISO.target.z, P.pos.z, 8, dt);
-  ISO.target.y = damp(ISO.target.y, P.pos.y + 1.0, 6, dt);
-  const cp = Math.cos(ISO.pitch);
-  camFwd.set(Math.sin(ISO.yaw) * cp, Math.sin(ISO.pitch), Math.cos(ISO.yaw) * cp);
-  let cx = ISO.target.x - camFwd.x * ISO.dist, cy = ISO.target.y - camFwd.y * ISO.dist, cz = ISO.target.z - camFwd.z * ISO.dist;
-  if (cam.shake > 0) {
-    const s = cam.shake * cam.shake * 0.5;
-    cx += rand(-s, s); cy += rand(-s, s); cz += rand(-s, s);
-    cam.shake = Math.max(0, cam.shake - dt * 2.4);
-  }
-  camera.position.set(cx, cy, cz);
-  camera.lookAt(ISO.target.x, ISO.target.y, ISO.target.z);
-  camera.fov = ISO.fov; camera.updateProjectionMatrix();
-  cam.yaw = ISO.yaw; // 让依赖镜头朝向的逻辑（自动选目标等）看向画面上方
-  hideOccludingTrees(dt);
-}
-
-// ---- 挡住角色的树冠：临时缩到看不见（离开后恢复） ----
-const _treeM = new THREE.Matrix4(), _zero = new THREE.Matrix4().makeScale(0.001, 0.001, 0.001);
-let treeOrig = null, treeHidden = new Set(), treeT = 0;
-function hideOccludingTrees(dt) {
-  if (!TREES) return;
-  treeT -= dt; if (treeT > 0) return; treeT = 0.12;
-  if (!treeOrig) treeOrig = TREES.cans.map(m => { const arr = []; for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, _treeM); arr.push(_treeM.clone()); } return arr; });
-  const P = player, bx = -camFwd.x, bz = -camFwd.z, bl = Math.hypot(bx, bz) || 1;
-  const pts = [P.pos]; if (alive(P.target) && distTo(P.target) < 14) pts.push(P.target.pos);
-  const want = new Set();
-  TREES.trees.forEach((t, i) => {
-    for (const p of pts) {
-      const dx = t.x - p.x, dz = t.z - p.z;
-      const along = (dx * bx + dz * bz) / bl, side = Math.abs(dx * bz - dz * bx) / bl;
-      if (along > -2.5 * t.s && along < 13 && side < 2.6 * t.s + 1) { want.add(i); break; }
-    }
-  });
-  let dirty = false;
-  for (const i of treeHidden) if (!want.has(i)) { TREES.cans.forEach((m, k) => m.setMatrixAt(i, treeOrig[k][i])); dirty = true; }
-  for (const i of want) if (!treeHidden.has(i)) { TREES.cans.forEach(m => m.setMatrixAt(i, _zero)); dirty = true; }
-  treeHidden = want;
-  if (dirty) TREES.cans.forEach(m => { m.instanceMatrix.needsUpdate = true; });
-}
-function restoreTrees() {
-  if (!TREES || !treeOrig) return;
-  for (const i of treeHidden) TREES.cans.forEach((m, k) => m.setMatrixAt(i, treeOrig[k][i]));
-  treeHidden = new Set(); TREES.cans.forEach(m => { m.instanceMatrix.needsUpdate = true; });
-}
-
-// ---- 点击反馈圈 + 鼠标悬停敌人的黄圈 ----
-const pings = [];
-function pingRing(p, color) {
-  const m = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 32), new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  m.rotation.x = -Math.PI / 2; m.position.set(p.x, H(p.x, p.z) + 0.07, p.z); scene.add(m); pings.push({ m, t: 0 });
-}
-const hoverRing = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.12, 40), new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-hoverRing.rotation.x = -Math.PI / 2; hoverRing.visible = false; scene.add(hoverRing);
-function updateIsoFx(dt) {
-  for (let i = pings.length - 1; i >= 0; i--) {
-    const p = pings[i]; p.t += dt; const k = p.t / 0.45;
-    if (k >= 1) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); pings.splice(i, 1); continue; }
-    p.m.scale.setScalar(1 + k * 1.6); p.m.material.opacity = 1 - k;
-  }
-  const h = VIEW === 'iso' ? ISO.hoverOrc : null;
-  hoverRing.visible = !!h && h !== player.target;
-  if (hoverRing.visible) { hoverRing.position.set(h.pos.x, H(h.pos.x, h.pos.z) + 0.05, h.pos.z); hoverRing.scale.setScalar(h.T.scale); }
-}
-function updateIso(dt) { // 每帧：排队技能、特效
-  if (VIEW !== 'iso') return;
-  updateIsoQueue(dt);
-  updateIsoFx(dt);
-}
 // ============ 半兽人 AI ============
 const orcs = [];
 let kills = 0, bossAlive = false, nextBossAt = 8, spawnT = 0;
@@ -2298,9 +1997,9 @@ function frame() {
   if (hitstop > 0) { hitstop -= real; dt = real * 0.05; }
   time += dt;
   try {
-    if (VIEW === 'iso') computeAimIso(); else computeAim();
+    computeAim();
     if (real > 0) {
-      updatePlayer(dt); updateLoot(dt); updateIso(dt);
+      updatePlayer(dt); updateLoot(dt);
       for (const o of orcs) o.update(dt);
       for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
       spawner(dt);
@@ -2311,7 +2010,7 @@ function frame() {
     animateWarrior(dt);
     updateSelRing(); updateShieldFx(dt);
   } catch (e) { if (!frameErr) { frameErr = String(e && e.stack || e); console.error(e); err('运行错误：' + e.message); } }
-  if (VIEW === 'iso') updateCameraIso(real || 1 / 60); else updateCamera(real || 1 / 60);
+  updateCamera(real || 1 / 60);
   const us = innerHeight * renderer.getPixelRatio() * 0.5 / Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
   fx.mat.uniforms.uScale.value = us; dust.mat.uniforms.uScale.value = us;
   sun.position.copy(player.pos).add(SUN_OFF); sun.target.position.copy(player.pos);
@@ -2321,16 +2020,14 @@ function frame() {
 }
 frame();
 const btn = $('startBtn'); btn.disabled = false; btn.textContent = '进入沃玛森林';
-const btnIso = $('startBtnIso'); btnIso.disabled = false; btnIso.textContent = '进入沃玛森林';
 function simStep(dt) { // 测试用：不渲染，只推进逻辑
   time += dt; if (hitstop > 0) hitstop -= dt;
-  if (VIEW === 'iso') computeAimIso(); else computeAim();
-  updatePlayer(dt); updateLoot(dt); updateIso(dt);
+  computeAim(); updatePlayer(dt); updateLoot(dt);
   for (const o of orcs) o.update(dt);
   for (let i = orcs.length - 1; i >= 0; i--) if (orcs[i].gone) orcs.splice(i, 1);
   spawner(dt); updateRings(dt); updateArcs(dt); fx.update(dt); dust.update(dt); animateWarrior(dt); updateSelRing(); updateShieldFx(dt); updateHUD(dt);
 }
-window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, loots, dropWeapon, makeWeapon, equipWeapon, get weapon() { return player.weapon; }, setKey(k, v) { keys[k] = v; }, scr(x, y, z) { return toScreen(V3(x, y, z), _sp) ? { x: _sp.x, y: _sp.y } : null; }, setView, ISO, get VIEW() { return VIEW; }, freeze(v) { testFreeze = v; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
+window.__game = { sim(sec) { for (let t = 0; t < sec; t += 1 / 60) simStep(1 / 60); }, press(k) { pressed[k] = true; }, loots, dropWeapon, makeWeapon, equipWeapon, get weapon() { return player.weapon; }, setKey(k, v) { keys[k] = v; }, freeze(v) { testFreeze = v; }, player, orcs, cam, spawnOrc, useRend, useExec, useWhirl, useShield, gainBuff, addRage, get frameErr() { return frameErr; },
   start() { started = true; freeMouse = true; setPaused(false); } };
 </script>
 </body>
